@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>WebAR: Пингвин и Белый медведь</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+  <!-- A-Frame (движок 3D для браузера) -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+  <!-- AR.js (добавляет AR-трекинг маркера в A-Frame) -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.4/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    body, html { margin: 0; padding: 0; overflow: hidden; background: #000; }
+    .ui-bar {
+      position: fixed; z-index: 10; left: 0; right: 0; bottom: 0;
+      display: flex; gap: 12px; justify-content: center; padding: 12px;
+      background: rgba(0,0,0,0.35); backdrop-filter: blur(6px);
+    }
+    .ui-btn {
+      border: 1px solid #fff; color: #fff; background: #111;
+      padding: 10px 14px; border-radius: 8px; font-size: 14px; cursor: pointer;
+    }
+    .notice {
+      position: fixed; z-index: 10; left: 50%; transform: translateX(-50%);
+      top: 10px; color: #fff; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 8px;
+      font-size: 13px; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="notice">Разрешите доступ к камере. Наведите камеру на распечатанный маркер Hiro.</div>
+
+  <div class="ui-bar">
+    <button class="ui-btn" id="btnScreenshot">Сделать скриншот</button>
+    <button class="ui-btn" id="btnSwitchCamera">Переключить камеру</button>
+  </div>
+
+  <a-scene
+      vr-mode-ui="enabled: false"
+      embedded
+      renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true"
+      arjs="sourceType: webcam; facingMode: environment; videoTexture: true; debugUIEnabled: false; trackingMethod: best;"
+  >
+    <a-marker type="pattern" url="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.4/aframe/examples/marker-training/examples/patterns/hiro.patt" id="hiroMarker">
+      <a-entity light="type: directional; intensity: 1.0" position="0 1 1"></a-entity>
+      <a-entity light="type: ambient; intensity: 0.6"></a-entity>
+
+      <!-- Пингвин (временно Fox) -->
+      <a-entity
+        id="penguin"
+        gltf-model="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Fox/glTF-Binary/Fox.glb"
+        position="-0.6 0 0"
+        rotation="0 30 0"
+        scale="0.012 0.012 0.012"
+        animation-mixer="clip: Walk; loop: repeat"
+      ></a-entity>
+
+      <!-- Белый медведь (временно RobotExpressive) -->
+      <a-entity
+        id="polarBear"
+        gltf-model="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/RobotExpressive/glTF-Binary/RobotExpressive.glb"
+        position="0.6 0 0"
+        rotation="0 -30 0"
+        scale="0.5 0.5 0.5"
+        animation-mixer="clip: Dance; loop: repeat"
+      ></a-entity>
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    // Скриншот
+    const btnScreenshot = document.getElementById('btnScreenshot');
+    btnScreenshot.addEventListener('click', () => {
+      const sceneEl = document.querySelector('a-scene');
+      const canvas = sceneEl && sceneEl.canvas;
+      if (!canvas) { alert('Сцена ещё загружается. Попробуйте через пару секунд.'); return; }
+      const dataURL = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = 'webar_screenshot.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // Переключение камеры
+    const btnSwitchCamera = document.getElementById('btnSwitchCamera');
+    btnSwitchCamera.addEventListener('click', async () => {
+      const sceneEl = document.querySelector('a-scene');
+      const arSystem = sceneEl.systems['arjs'];
+      const currentFacing = arSystem.parameters.facingMode || 'environment';
+      const nextFacing = currentFacing === 'environment' ? 'user' : 'environment';
+      try {
+        await arSystem._reinitVideo({ facingMode: nextFacing });
+        arSystem.parameters.facingMode = nextFacing;
+      } catch (e) {
+        alert('Не удалось переключить камеру. На некоторых моделях iPhone/Android это ограничено браузером.');
+        console.log(e);
+      }
+    });
+
+    // Патч для AR.js (если нет метода _reinitVideo)
+    (function patchARjsReinit() {
+      const sceneEl = document.querySelector('a-scene');
+      const arSystem = sceneEl.systems['arjs'];
+      if (arSystem && typeof arSystem._reinitVideo !== 'function') {
+        arSystem._reinitVideo = async function({ facingMode = 'environment' } = {}) {
+          const source = this._arSessionSource || this.source || this.arSource || this._source;
+          const video = source?.video || source?.domElement || document.querySelector('video');
+          const stream = video?.srcObject;
+          if (stream) stream.getTracks().forEach(t => t.stop());
+          const constraints = { audio: false, video: { facingMode } };
+          const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+          if (video) {
+            video.srcObject = newStream;
+            await video.play();
+          }
+        };
+      }
+    })();
+  </script>
+</body>
+</html>
