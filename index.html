@@ -15,7 +15,8 @@
     body, html { margin: 0; padding: 0; overflow: hidden; background: #000; }
     .notice {
       position: fixed; z-index: 10; left: 50%; transform: translateX(-50%);
-      top: 10px; color: #fff; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 8px;
+      top: 10px; color: #fff; background: rgba(0,0,0,0.3); /* полупрозрачный фон */
+      padding: 8px 12px; border-radius: 8px;
       font-size: 13px; text-align: center;
     }
     .ui-bar {
@@ -31,7 +32,7 @@
 </head>
 <body>
 
-  <div class="notice">Разрешите доступ к камере и наведите её на маркер Hiro.</div>
+  <div class="notice" id="notice">Разрешите доступ к камере и наведите её на маркер Hiro.</div>
 
   <div class="ui-bar">
     <button class="ui-btn" id="btnScreenshot">Сделать скриншот</button>
@@ -59,6 +60,12 @@
   </a-scene>
 
   <script>
+    // Скрыть уведомление через 5 секунд
+    setTimeout(() => {
+      const notice = document.getElementById('notice');
+      if (notice) notice.style.display = 'none';
+    }, 5000);
+
     // Скриншот
     const btnScreenshot = document.getElementById('btnScreenshot');
     btnScreenshot.addEventListener('click', () => {
@@ -110,5 +117,3 @@
       }
     })();
   </script>
-</body>
-</html>
