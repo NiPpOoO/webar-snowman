@@ -24,18 +24,17 @@
 
   <div class="notice">Разрешите доступ к камере и наведите её на маркер Hiro.</div>
 
+  <!-- Сцена AR -->
   <a-scene
-      vr-mode-ui="enabled: false"
       embedded
-      renderer="antialias: true"
-      arjs="sourceType: webcam; facingMode: environment; debugUIEnabled: false;"
+      vr-mode-ui="enabled: false"
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
   >
     <!-- Маркер Hiro -->
     <a-marker type="pattern" url="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.4/aframe/examples/marker-training/examples/patterns/hiro.patt">
       
-      <!-- Простой куб -->
+      <!-- Куб -->
       <a-box position="0 0.5 0" material="color: red;" depth="0.5" height="0.5" width="0.5">
-        <!-- Анимация вращения -->
         <a-animation attribute="rotation" dur="4000" to="0 360 0" repeat="indefinite"></a-animation>
       </a-box>
 
