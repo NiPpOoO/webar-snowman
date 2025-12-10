@@ -1,52 +1,19 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <title>WebAR Test: Куб на Hiro маркере</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
-  <!-- AR.js для A-Frame -->
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@master/aframe/build/aframe-ar.js"></script>
-
-  <style>
-    body, html { margin: 0; padding: 0; overflow: hidden; background: #000; }
-    .notice {
-      position: fixed; z-index: 10; left: 50%; transform: translateX(-50%);
-      top: 10px; color: #fff; background: rgba(0,0,0,0.3);
-      padding: 8px 12px; border-radius: 8px;
-      font-size: 13px; text-align: center;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="notice" id="notice">Разрешите доступ к камере и наведите её на маркер Hiro.</div>
-
-  <!-- Сцена AR -->
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-    <!-- Маркер Hiro -->
-    <a-marker type="pattern" url="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@master/aframe/examples/marker-training/examples/patterns/hiro.patt">
-      
-      <!-- Куб -->
-      <a-box position="0 0.5 0" material="color: yellow;" depth="1" height="1" width="1">
-        <a-animation attribute="rotation" dur="4000" to="0 360 0" repeat="indefinite"></a-animation>
-      </a-box>
-
-    </a-marker>
-
-    <!-- Камера -->
-    <a-entity camera></a-entity>
-  </a-scene>
-
-  <script>
-    // Скрыть уведомление через 5 секунд
-    setTimeout(() => {
-      const notice = document.getElementById('notice');
-      if (notice) notice.style.display = 'none';
-    }, 5000);
-  </script>
-</body>
+ <!DOCTYPE html>
+<html>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <!-- we import arjs version without NFT but with marker + location based support -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <body style="margin : 0px; overflow: hidden;">
+        <a-scene embedded arjs>
+        <a-marker preset="hiro">
+            <a-entity
+            position="0 0 0"
+            rotation="0 0 0"
+            scale="0.05 0.05 0.05"
+            gltf-model="../image-tracking/nft/trex/scene.gltf"
+            ></a-entity>
+        </a-marker>
+        <a-entity camera></a-entity>
+        </a-scene>
+    </body>
 </html>
