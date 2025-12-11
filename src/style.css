@@ -1,4 +1,4 @@
-/* style.css — аккуратные стили UI */
+/* style.css — минимальные стили */
 body { margin:0; background:#000; font-family:system-ui, sans-serif; }
 .ui {
   position:fixed; top:10px; left:50%; transform:translateX(-50%);
@@ -14,9 +14,4 @@ body { margin:0; background:#000; font-family:system-ui, sans-serif; }
   padding:10px 14px; border-radius:8px; color:#fff;
   border:1px solid rgba(255,255,255,.2);
   background:rgba(30,30,30,.7); cursor:pointer;
-}
-.hidden { display:none; }
-.fallback {
-  position:fixed; inset:0;
-  background:#000 url('assets/fallback.jpg') center/cover no-repeat;
 }
