@@ -1,22 +1,11 @@
-// script.js — логика UI и fallback
+// script.js — логика UI и кнопок
 
-const marker = document.getElementById('marker');
-const fallback = document.getElementById('fallback');
 const ui = document.getElementById('ui');
+const marker = document.getElementById('marker');
 
-let foundOnce = false;
-let fallbackTimer = setTimeout(() => {
-  if (!foundOnce) {
-    fallback.classList.remove('hidden');
-    ui.textContent = 'Демо‑режим: трекинг не найден. Это бета — завтра добавим финальные модели.';
-  }
-}, 8000); // 8 секунд на первый захват
-
+// События маркера
 marker.addEventListener('markerFound', () => {
-  foundOnce = true;
-  clearTimeout(fallbackTimer);
-  fallback.classList.add('hidden');
-  ui.textContent = 'Готово: снеговик распознан. Тестовые фигуры вращаются.';
+  ui.textContent = 'Готово: снеговик распознан. Фигуры появились.';
 });
 
 marker.addEventListener('markerLost', () => {
@@ -33,14 +22,14 @@ document.getElementById('shot').addEventListener('click', () => {
   a.click();
 });
 
-// Переключение камеры (если поддерживается)
+// Переключение камеры
 document.getElementById('flip').addEventListener('click', () => {
   const scene = document.querySelector('a-scene');
   const current = scene.getAttribute('arjs');
   const isRear = /facingMode: environment/.test(current);
   const next = isRear
-    ? 'trackingMethod: best; sourceType: webcam;'
-    : 'trackingMethod: best; sourceType: webcam; facingMode: environment;';
+    ? 'trackingMethod: nft; sourceType: webcam;'
+    : 'trackingMethod: nft; sourceType: webcam; facingMode: environment;';
   scene.setAttribute('arjs', next);
   ui.textContent = isRear ? 'Включена фронтальная камера' : 'Включена основная камера';
 });
