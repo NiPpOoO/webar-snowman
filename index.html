@@ -1,35 +1,65 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>AR NFT Marker Test</title>
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <!-- AR.js with NFT support -->
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/aframe/build/aframe-ar-nft.js"></script>
-  </head>
-  <body style="margin: 0; overflow: hidden;">
-    <a-scene
-      vr-mode-ui="enabled: false"
-      renderer="logarithmicDepthBuffer: true;"
-      embedded
-      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
-    >
-      <!-- NFT Marker -->
-      <a-nft
-        type="nft"
-        url="assets/markers/snowman/photo_5321140661144719683_w"
-        smooth="true"
-        smoothCount="10"
-        smoothTolerance="0.01"
-        smoothThreshold="5"
-      >
-        <!-- Тестовая модель: куб -->
-        <a-box color="blue" depth="0.5" height="0.5" width="0.5" position="0 0 0"></a-box>
-      </a-nft>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>WebAR Beta: снеговик как NFT‑маркер</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 
-      <!-- Камера -->
-      <a-entity camera></a-entity>
-    </a-scene>
-  </body>
+  <!-- A‑Frame -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <!-- AR.js с поддержкой NFT -->
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <div id="ui" class="ui">Наведи камеру на снеговика — появятся тестовые фигуры 🦊🐇</div>
+  <div id="bar" class="bar">
+    <button id="flip" class="btn">Сменить камеру</button>
+    <button id="shot" class="btn">Снимок</button>
+  </div>
+  <div id="fallback" class="fallback hidden" aria-hidden="true"></div>
+
+  <a-scene
+    embedded
+    renderer="colorManagement:true"
+    vr-mode-ui="enabled:false"
+    arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
+  >
+    <!-- NFT‑маркер снеговика -->
+    <a-nft
+      type="nft"
+      url="assets/markers/snowman/snowman"
+      smooth="true"
+      smoothCount="10"
+      smoothTolerance="0.01"
+      smoothThreshold="5"
+      emitevents="true"
+      id="marker"
+    >
+      <!-- Лиса (тест: оранжевый конус) -->
+      <a-cone
+        position="-0.45 0 0"
+        rotation="0 0 0"
+        scale="0.3 0.3 0.3"
+        color="#ff6600"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
+      ></a-cone>
+
+      <!-- Заяц (тест: белый цилиндр) -->
+      <a-cylinder
+        position="0.45 0 0"
+        rotation="0 0 0"
+        scale="0.25 0.25 0.25"
+        color="#ffffff"
+        animation="property: rotation; to: 0 -360 0; loop: true; dur: 3000"
+      ></a-cylinder>
+    </a-nft>
+
+    <!-- Камера -->
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script src="src/script.js"></script>
+</body>
 </html>
