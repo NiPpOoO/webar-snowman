@@ -1,13 +1,10 @@
-// script.js — логика UI и кнопок
-
 const ui = document.getElementById('ui');
 const marker = document.getElementById('marker');
 
 // События маркера
 marker.addEventListener('markerFound', () => {
-  ui.textContent = 'Готово: снеговик распознан. Фигуры появились.';
+  ui.textContent = 'Маркер распознан: фигуры появились.';
 });
-
 marker.addEventListener('markerLost', () => {
   ui.textContent = 'Потерян трекинг. Наведи камеру на снеговика ещё раз.';
 });
@@ -15,10 +12,11 @@ marker.addEventListener('markerLost', () => {
 // Снимок кадра
 document.getElementById('shot').addEventListener('click', () => {
   const canvas = document.querySelector('canvas');
+  if (!canvas) return;
   const url = canvas.toDataURL('image/png');
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'webar-snowman-beta.png';
+  a.download = 'webar-snowman-test.png';
   a.click();
 });
 
