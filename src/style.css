@@ -1,11 +1,22 @@
-body {
-  margin: 0;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
+/* style.css — аккуратные стили UI */
+body { margin:0; background:#000; font-family:system-ui, sans-serif; }
+.ui {
+  position:fixed; top:10px; left:50%; transform:translateX(-50%);
+  color:#fff; font-size:14px; line-height:1.5;
+  background:rgba(0,0,0,.55); padding:10px 14px; border-radius:10px;
+  backdrop-filter:blur(6px);
 }
-
-a-scene {
-  width: 100vw;
-  height: 100vh;
+.bar {
+  position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
+  display:flex; gap:10px;
 }
-
+.btn {
+  padding:10px 14px; border-radius:8px; color:#fff;
+  border:1px solid rgba(255,255,255,.2);
+  background:rgba(30,30,30,.7); cursor:pointer;
+}
+.hidden { display:none; }
+.fallback {
+  position:fixed; inset:0;
+  background:#000 url('assets/fallback.jpg') center/cover no-repeat;
+}
