@@ -1,18 +1,35 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>WebAR Snowman</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.0/aframe/build/aframe-ar.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="utf-8">
+    <title>AR NFT Marker Test</title>
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <!-- AR.js with NFT support -->
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/aframe/build/aframe-ar-nft.js"></script>
   </head>
-  <body>
-    <a-scene embedded arjs>
-      <a-marker type="nft" url="assets/markers/snowman">
-        <a-entity gltf-model="assets/models/snowman.glb" scale="0.5 0.5 0.5"></a-entity>
-      </a-marker>
+  <body style="margin: 0; overflow: hidden;">
+    <a-scene
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true;"
+      embedded
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+    >
+      <!-- NFT Marker -->
+      <a-nft
+        type="nft"
+        url="assets/markers/snowman"
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance="0.01"
+        smoothThreshold="5"
+      >
+        <!-- Базовая тестовая модель: куб -->
+        <a-box color="red" depth="0.5" height="0.5" width="0.5" position="0 0 0"></a-box>
+      </a-nft>
+
+      <!-- Камера -->
       <a-entity camera></a-entity>
     </a-scene>
-    <script src="script.js"></script>
   </body>
 </html>
