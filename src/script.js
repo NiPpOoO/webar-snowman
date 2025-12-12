@@ -50,4 +50,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 'image/png');
     });
   }
+
+  if (btnFlip) {
+    btnFlip.addEventListener('click', async () => {
+      let arjs = scene.getAttribute('arjs');
+      const currentFacing = /environment/.test(arjs) ? 'environment' : 'user';
+      const nextFacing = currentFacing === 'environment' ? 'user' : 'environment';
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: nextFacing } });
+        const video = document.querySelector('video');
+        if (video) { video.srcObject = stream; video.play?.(); }
+        safeText(nextFacing === 'environment' ? 'Основная камера' : 'Фронтальная камера');
+      } catch (e) { safeText('Не удалось переключить камеру'); }
+    });
+  }
 });
