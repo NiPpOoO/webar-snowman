@@ -14,10 +14,10 @@
 </head>
 <body>
   <!-- UI -->
-  <div id="ui" class="ui">Наведи камеру на снеговика — появятся тестовые фигуры 🦊🐇</div>
-  <div id="bar" class="bar">
-    <button id="flip" class="btn">Сменить камеру</button>
-    <button id="shot" class="btn">Снимок</button>
+  <div id="ui" class="ui" aria-live="polite" role="status">Наведи камеру на снеговика — появятся тестовые фигуры 🦊🐇</div>
+  <div id="bar" class="bar" role="toolbar" aria-label="Панель управления">
+    <button id="flip" class="btn" aria-label="Сменить камеру">Сменить камеру</button>
+    <button id="shot" class="btn" aria-label="Сделать снимок">Снимок</button>
   </div>
 
   <!-- AR-сцена -->
