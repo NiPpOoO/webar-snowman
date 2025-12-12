@@ -36,3 +36,15 @@ label.btn input[type="checkbox"] {
 .arjs-video, .arjs-debug-ui {
   display: none !important;
 }
+
+/* Diagnostics overlay */
+#diag {
+  position: fixed; right: 12px; bottom: 12px; max-width: 360px; max-height: 50vh; overflow:auto; z-index:40;
+  background: rgba(0,0,0,0.6); color: #fff; font-size: 13px; padding: 8px; border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
+#diag h4 { margin: 0 0 6px 0; font-size: 14px; }
+#diag .row { margin-bottom:6px; }
+#diag .ok { color: #6cf; }
+#diag .warn { color: #ffcc00; }
+#diag .err { color: #ff6b6b; }

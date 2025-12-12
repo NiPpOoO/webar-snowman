@@ -15,7 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Online logging
   const DEFAULT_LOG_URL = 'http://localhost:3001/logs';
-  const logEndpoint = window.LOG_ENDPOINT || DEFAULT_LOG_URL;
+  // query param: ?log_endpoint=https://example.com/logs
+  const qp = new URLSearchParams(window.location.search);
+  const logEndpointFromQuery = qp.get('log_endpoint');
+  const logEndpoint = window.LOG_ENDPOINT || logEndpointFromQuery || DEFAULT_LOG_URL;
   const logEnabledKey = 'webar_online_log_enabled';
   let logEnabled = false;
 
@@ -93,6 +96,25 @@ document.addEventListener('DOMContentLoaded', () => {
       sendLog('debug', 'assets-count', { count: assets.length });
       const aassets = document.querySelector('a-assets');
       if (aassets) {
+        // optionally show diag overlay
+        const showDiag = qp.get('diag') === '1';
+        if (showDiag) {
+          let diag = document.getElementById('diag');
+          if (!diag) {
+            diag = document.createElement('div'); diag.id = 'diag';
+            diag.innerHTML = '<h4>Diagnostics</h4><div id="diag-list"></div>';
+            document.body.appendChild(diag);
+          }
+        }
+        // Normalize a-assets src to absolute path (helps on GitHub Pages and subpath hosts)
+        const basePath = location.origin + location.pathname.replace(/\/[^/]*$/, '/');
+        for (const item of Array.from(aassets.querySelectorAll('a-asset-item'))) {
+          const s = item.getAttribute('src') || '';
+          if (s && !/^https?:\/\//.test(s) && !s.startsWith('/')) {
+            const newUrl = basePath + s;
+            try { item.setAttribute('src', newUrl); sendLog('debug', 'asset-updated-src', { old: s, new: newUrl }); } catch(e){}
+          }
+        }
         aassets.addEventListener('loaded', () => { console.log('[assets] a-assets loaded'); sendLog('info','assets-loaded'); safeText('Модели загружены'); });
         aassets.addEventListener('error', (e) => console.warn('[assets] a-assets error', e));
         // check each asset by fetching its src to validate it is reachable (CORS/404 issues)
@@ -106,6 +128,14 @@ document.addEventListener('DOMContentLoaded', () => {
               else sendLog('debug', 'asset-reachable', { url, status: r.status });
               console.log('[assets] HEAD', url, r.status);
               if (!r.ok) safeText('Ошибка загрузки ресурсов: ' + url + ' (' + r.status + ')');
+              if (qp.get('diag') === '1') {
+                const list = document.getElementById('diag-list');
+                if (list) {
+                  const row = document.createElement('div'); row.className = 'row ' + (r.ok ? 'ok' : 'err');
+                  row.textContent = `${url} -> ${r.status}`;
+                  list.appendChild(row);
+                }
+              }
             }).catch(e => { sendLog('error', 'asset-head-err', { url, err: e.message }); console.warn('[assets] HEAD failed fetch', url, e); });
           } catch (e) { console.warn('[assets] check failed', e); }
         }
@@ -122,6 +152,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('[marker] HEAD', url, r.status);
                 if (!r.ok) { sendLog('warn', 'marker-asset-missing', { url, status: r.status }); safeText('Отсутствует файл маркера: ' + url); }
                 else sendLog('debug', 'marker-asset', { url, status: r.status });
+                if (qp.get('diag') === '1') {
+                  const list = document.getElementById('diag-list');
+                  if (list) {
+                    const row = document.createElement('div'); row.className = 'row ' + (r.ok ? 'ok' : 'err');
+                    row.textContent = `${url} -> ${r.status}`;
+                    list.appendChild(row);
+                  }
+                }
               }).catch(e => { sendLog('error', 'marker-head-err', { url, err: e.message }); console.warn('[marker] HEAD failed', url, e); });
             }
           } else {
@@ -185,6 +223,49 @@ document.addEventListener('DOMContentLoaded', () => {
     return null;
   }
 
+  // Preview functionality — show models directly in front of camera for debugging
+  function createPreviewEntities() {
+    // create root if doesn't exist
+    let root = document.getElementById('preview-root');
+    if (!root) {
+      root = document.createElement('a-entity');
+      root.id = 'preview-root';
+      // attach to camera to keep it in view
+      const cam = document.querySelector('[camera]') || scene.querySelector('a-entity[camera]');
+      if (cam) {
+        cam.appendChild(root);
+      } else {
+        scene.appendChild(root);
+      }
+    }
+    // remove existing children
+    root.innerHTML = '';
+    // create models as preview children
+    const fox = document.createElement('a-entity');
+    fox.id = 'fox-preview';
+    fox.setAttribute('gltf-model', '#model-fox');
+    fox.setAttribute('position', '-0.6 0 -2');
+    fox.setAttribute('scale', '0.5 0.5 0.5');
+    root.appendChild(fox);
+
+    const hare = document.createElement('a-entity');
+    hare.id = 'hare-preview';
+    hare.setAttribute('gltf-model', '#model-hare');
+    hare.setAttribute('position', '0.6 0 -2');
+    hare.setAttribute('scale', '0.5 0.5 0.5');
+    root.appendChild(hare);
+    // Attach listeners
+    fox.addEventListener('model-loaded', () => { sendLog('info', 'fox preview model loaded'); console.log('[preview] fox loaded'); logModelDetails(fox, 'fox-preview'); });
+    fox.addEventListener('model-error', (e) => { sendLog('error', 'fox preview model error', { err: e }); console.warn('[preview] fox error', e); });
+    hare.addEventListener('model-loaded', () => { sendLog('info', 'hare preview model loaded'); console.log('[preview] hare loaded'); logModelDetails(hare, 'hare-preview'); });
+    hare.addEventListener('model-error', (e) => { sendLog('error', 'hare preview model error', { err: e }); console.warn('[preview] hare error', e); });
+  }
+
+  function destroyPreviewEntities() {
+    const root = document.getElementById('preview-root');
+    if (root) root.remove();
+  }
+
   if (btnFlip) {
     btnFlip.addEventListener('click', async () => {
       if (!scene) return;
@@ -217,65 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
               dev = cams[cams.length - 1]; // attempt choose different camera
             }
 
-              // Preview functionality — show models directly in front of camera for debugging
-              function createPreviewEntities() {
-                // create root if doesn't exist
-                let root = document.getElementById('preview-root');
-                if (!root) {
-                  root = document.createElement('a-entity');
-                  root.id = 'preview-root';
-                  // attach to camera to keep it in view
-                  const cam = document.querySelector('[camera]') || scene.querySelector('a-entity[camera]');
-                  if (cam) {
-                    cam.appendChild(root);
-                  } else {
-                    scene.appendChild(root);
-                  }
-                }
-                // remove existing children
-                root.innerHTML = '';
-                // create models as preview children
-                const fox = document.createElement('a-entity');
-                fox.id = 'fox-preview';
-                fox.setAttribute('gltf-model', '#model-fox');
-                fox.setAttribute('position', '-0.6 0 -2');
-                fox.setAttribute('scale', '0.5 0.5 0.5');
-                root.appendChild(fox);
-
-                const hare = document.createElement('a-entity');
-                hare.id = 'hare-preview';
-                hare.setAttribute('gltf-model', '#model-hare');
-                hare.setAttribute('position', '0.6 0 -2');
-                hare.setAttribute('scale', '0.5 0.5 0.5');
-                root.appendChild(hare);
-                // Attach listeners
-                fox.addEventListener('model-loaded', () => { sendLog('info', 'fox preview model loaded'); console.log('[preview] fox loaded'); logModelDetails(fox, 'fox-preview'); });
-                fox.addEventListener('model-error', (e) => { sendLog('error', 'fox preview model error', { err: e }); console.warn('[preview] fox error', e); });
-                hare.addEventListener('model-loaded', () => { sendLog('info', 'hare preview model loaded'); console.log('[preview] hare loaded'); logModelDetails(hare, 'hare-preview'); });
-                hare.addEventListener('model-error', (e) => { sendLog('error', 'hare preview model error', { err: e }); console.warn('[preview] hare error', e); });
-              }
-
-              function destroyPreviewEntities() {
-                const root = document.getElementById('preview-root');
-                if (root) root.remove();
-              }
-
-              if (btnPreviewToggle) {
-                btnPreviewToggle.addEventListener('change', (ev) => {
-                  if (ev.target.checked) {
-                    createPreviewEntities();
-                  } else {
-                    destroyPreviewEntities();
-                  }
-                });
-                // restore toggle if saved
-                try {
-                  const key = 'webar_preview_enabled';
-                  const val = localStorage.getItem(key) === '1';
-                  if (val) { btnPreviewToggle.checked = true; createPreviewEntities(); }
-                  btnPreviewToggle.addEventListener('change', (e) => localStorage.setItem(key, e.target.checked ? '1' : '0'));
-                } catch (e) { }
-              }
+              
             if (dev) constraints = { video: { deviceId: { exact: dev.deviceId } } };
           } catch (e) {
             console.warn('[camera] enumerateDevices failed', e);
@@ -373,9 +396,9 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     const fox = document.getElementById('fox-model');
     const hare = document.getElementById('hare-model');
-    if (fox) fox.addEventListener('model-loaded', () => console.log('[model] fox loaded'));
+    if (fox) fox.addEventListener('model-loaded', () => { console.log('[model] fox loaded'); sendLog('info','model-loaded', { name:'fox' }); if (qp.get('diag') === '1') { const list = document.getElementById('diag-list'); if (list) { const row = document.createElement('div'); row.className='row ok'; row.textContent='Model fox loaded'; list.appendChild(row);} } });
     if (fox) fox.addEventListener('model-error', (e) => console.warn('[model] fox error', e));
-    if (hare) hare.addEventListener('model-loaded', () => console.log('[model] hare loaded'));
+    if (hare) hare.addEventListener('model-loaded', () => { console.log('[model] hare loaded'); sendLog('info','model-loaded', { name:'hare' }); if (qp.get('diag') === '1') { const list = document.getElementById('diag-list'); if (list) { const row = document.createElement('div'); row.className='row ok'; row.textContent='Model hare loaded'; list.appendChild(row);} } });
     if (hare) hare.addEventListener('model-error', (e) => console.warn('[model] hare error', e));
   } catch (e) {
     console.warn('[model] listener install failed', e);
