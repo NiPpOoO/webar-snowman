@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
   const ui = document.getElementById('ui');
-  const scene = document.querySelector('a-scene');
   const marker = document.getElementById('marker');
   const btnShot = document.getElementById('shot');
   const btnFlip = document.getElementById('flip');
@@ -12,9 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     marker.addEventListener('markerFound', () => safeText('Маркер найден: лиса появилась.'));
     marker.addEventListener('markerLost', () => safeText('Маркер потерян. Наведи камеру снова.'));
   }
-
-  const fox = document.getElementById('fox-model');
-  if (fox) fox.addEventListener('model-loaded', () => console.log('[model] fox loaded'));
 
   if (btnPreviewToggle) {
     btnPreviewToggle.addEventListener('change', (ev) => {
@@ -53,14 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnFlip) {
     btnFlip.addEventListener('click', async () => {
-      let arjs = scene.getAttribute('arjs');
-      const currentFacing = /environment/.test(arjs) ? 'environment' : 'user';
-      const nextFacing = currentFacing === 'environment' ? 'user' : 'environment';
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: nextFacing } });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         const video = document.querySelector('video');
         if (video) { video.srcObject = stream; video.play?.(); }
-        safeText(nextFacing === 'environment' ? 'Основная камера' : 'Фронтальная камера');
+        safeText('Фронтальная камера включена');
       } catch (e) { safeText('Не удалось переключить камеру'); }
     });
   }
