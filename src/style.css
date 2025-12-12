@@ -15,4 +15,6 @@ canvas, video { position:fixed; top:0; left:0; width:100vw; height:100vh; z-inde
   padding:10px 14px; border-radius:8px; color:#fff;
   border:1px solid rgba(255,255,255,.2);
   background:rgba(30,30,30,.7); cursor:pointer;
+  backdrop-filter:blur(6px);
+  
 }
