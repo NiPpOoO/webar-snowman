@@ -1,16 +1,11 @@
 {
   "name": "webar-snowman",
   "version": "1.0.0",
-  "description": "WebAR snowman demo (A-Frame + AR.js NFT) ready for GitHub Pages",
-  "type": "module",
+  "description": "WebAR demo: Fox model near Snowman NFT marker",
   "scripts": {
-    "start": "npx http-server -p 8080",
-    "log-server": "node tools/log-server.js"
+    "start": "npx http-server -p 8080"
   },
   "devDependencies": {
-    "http-server": "^14.1.1",
-    "express": "^4.18.3",
-    "socket.io": "^4.7.1",
-    "cors": "^2.8.5"
+    "http-server": "^14.1.1"
   }
 }
