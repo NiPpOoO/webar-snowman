@@ -1,22 +1,21 @@
 # WEBAR-SNOWMAN
 
-Демо WebAR со снеговиком на NFT-маркере (A‑Frame 1.3.0 + AR.js).
+Демо WebAR: модель лисы появляется при распознавании NFT-маркера снеговика.
 
 ## Структура
 - assets/
   - markers/snowman/
+    - snowman.iset
     - snowman.fset
     - snowman.fset3
-    - snowman.iset
   - models/
-    - snowman.glb
-    - light.glb
+    - Fox.glb
 - src/
   - script.js
   - style.css
 - index.html
 
-## Локальный запуск
+## Запуск локально
 ```bash
 npm i
 npm run start
