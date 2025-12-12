@@ -17,6 +17,10 @@ canvas, video { position:fixed; top:0; left:0; width:100vw; height:100vh; z-inde
   background:rgba(30,30,30,.7); cursor:pointer;
 }
 
+label.btn input[type="checkbox"] {
+  margin: 0;
+}
+
 /* ensure ar.js debug video isn't shown small at corner; stretch to fill screen */
 #arjs-video, video[playsinline], video[src] {
   position: fixed !important;

@@ -1,0 +1,19 @@
+{
+  "name": "webar-snowman",
+  "version": "1.0.0",
+  "description": "WebAR snowman demo with auto-push support and online logs",
+  "type": "module",
+  "scripts": {
+    "autopush": "node tools/autopush.js",
+    "install-hooks": "node tools/install-hooks.js",
+    "start": "npx http-server -p 8080",
+    "log-server": "node tools/log-server.js"
+  },
+  "devDependencies": {
+    "chokidar": "^3.5.3",
+    "http-server": "^14.1.1",
+    "express": "^4.18.3",
+    "socket.io": "^4.7.1",
+    "cors": "^2.8.5"
+  }
+}

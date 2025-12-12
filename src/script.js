@@ -3,11 +3,43 @@ document.addEventListener('DOMContentLoaded', () => {
   const marker = document.getElementById('marker');
   const btnShot = document.getElementById('shot');
   const btnFlip = document.getElementById('flip');
+  const btnLogToggle = document.getElementById('log-toggle');
   const scene = document.querySelector('a-scene');
 
   function safeText(msg) {
     if (ui) ui.textContent = msg;
+    // optionally send to remote logger
+    sendLog('info', msg);
   }
+
+  // Online logging
+  const DEFAULT_LOG_URL = 'http://localhost:3001/logs';
+  const logEndpoint = window.LOG_ENDPOINT || DEFAULT_LOG_URL;
+  const logEnabledKey = 'webar_online_log_enabled';
+  let logEnabled = false;
+
+  function saveLogEnabled(enabled) {
+    logEnabled = !!enabled;
+    try { localStorage.setItem(logEnabledKey, logEnabled ? '1' : '0'); } catch (_) {}
+    if (btnLogToggle) btnLogToggle.checked = logEnabled;
+  }
+
+  function sendLog(level, message, meta) {
+    if (!logEnabled) return;
+    try {
+      fetch(logEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level, message, meta: meta || {}, ts: new Date().toISOString() })
+      }).catch(e => console.warn('[online-log] send failed', e));
+    } catch (e) {
+      console.warn('[online-log] send error', e);
+    }
+  }
+
+  // restore setting
+  try { saveLogEnabled(localStorage.getItem(logEnabledKey) === '1'); } catch (e) { saveLogEnabled(false); }
+  if (btnLogToggle) btnLogToggle.addEventListener('change', (ev) => saveLogEnabled(ev.target.checked));
 
   // Проверки
   if (!scene) {
@@ -21,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (marker) {
     marker.addEventListener('markerFound', () => {
       console.log('[marker] Found');
+      sendLog('info', 'markerFound', { id: marker.id });
       safeText('Маркер распознан: фигуры появились.');
       // пометить для доступности
       marker.setAttribute('visible', true);
@@ -28,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     marker.addEventListener('markerLost', () => {
       console.log('[marker] Lost');
+      sendLog('warn', 'markerLost', { id: marker.id });
       safeText('Потерян трекинг. Наведи камеру на снеговика ещё раз.');
       marker.setAttribute('visible', false);
       marker.classList && marker.classList.remove('marker-visible');
@@ -49,10 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const arjsSystem = scene && scene.systems && (scene.systems['arjs'] || scene.systems['artoolkit']);
       console.log('[arjs] system:', !!arjsSystem, arjsSystem);
+      sendLog('debug', 'arjs-system', { detected: !!arjsSystem });
       const v = await getVideoElement();
       console.log('[video] element found:', !!v, v);
+      sendLog('debug', 'video-element', { found: !!v });
       const assets = document.querySelectorAll('a-asset-item');
       console.log('[assets] found', assets.length);
+      sendLog('debug', 'assets-count', { count: assets.length });
       const aassets = document.querySelector('a-assets');
       if (aassets) {
         aassets.addEventListener('loaded', () => console.log('[assets] a-assets loaded'));
