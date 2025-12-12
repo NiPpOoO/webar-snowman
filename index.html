@@ -25,8 +25,13 @@
     embedded
     renderer="colorManagement:true"
     vr-mode-ui="enabled:false"
-    arjs="trackingMethod:nft; sourceType:webcam; debugUIEnabled:false;"
+    arjs="trackingMethod:nft; sourceType:webcam; facingMode:environment; debugUIEnabled:false;"
   >
+    <a-assets>
+      <a-asset-item id="model-fox" src="assets/models/snowman.glb"></a-asset-item>
+      <a-asset-item id="model-hare" src="assets/models/light.glb"></a-asset-item>
+    </a-assets>
+
     <!-- NFT-маркер снеговика -->
     <a-nft
       type="nft"
@@ -34,21 +39,15 @@
       emitevents="true"
       id="marker"
     >
-      <!-- Лиса (временно куб) -->
-      <a-box
-        position="-0.6 0 0"
-        scale="0.3 0.3 0.3"
-        color="#ff6600"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"
-      ></a-box>
+      <!-- Лиса (gltf model) -->
+      <a-entity id="fox-model" position="-0.6 0 0" scale="0.3 0.3 0.3" visible="true"
+        gltf-model="#model-fox" animation="property: rotation; to: 0 360 0; loop: true; dur: 5000">
+      </a-entity>
 
-      <!-- Заяц (временно сфера) -->
-      <a-sphere
-        position="0.6 0 0"
-        scale="0.25 0.25 0.25"
-        color="#ffffff"
-        animation="property: position; to: 0.6 0.2 0; dir: alternate; loop: true; dur: 2000"
-      ></a-sphere>
+      <!-- Заяц (gltf model, rotated) -->
+      <a-entity id="hare-model" position="0.6 0 0" scale="0.25 0.25 0.25" visible="true"
+        gltf-model="#model-hare" animation="property: position; to: 0.6 0.2 0; dir: alternate; loop: true; dur: 2000">
+      </a-entity>
 
       <!-- Освещение -->
       <a-entity light="type: ambient; intensity: 0.6;"></a-entity>
