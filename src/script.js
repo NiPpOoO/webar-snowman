@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnFlip = document.getElementById('flip');
   const btnLogToggle = document.getElementById('log-toggle');
   const scene = document.querySelector('a-scene');
+   const btnPreviewToggle = document.getElementById('preview-toggle');
 
   function safeText(msg) {
     if (ui) ui.textContent = msg;
@@ -92,9 +93,42 @@ document.addEventListener('DOMContentLoaded', () => {
       sendLog('debug', 'assets-count', { count: assets.length });
       const aassets = document.querySelector('a-assets');
       if (aassets) {
-        aassets.addEventListener('loaded', () => console.log('[assets] a-assets loaded'));
+        aassets.addEventListener('loaded', () => { console.log('[assets] a-assets loaded'); sendLog('info','assets-loaded'); safeText('Модели загружены'); });
         aassets.addEventListener('error', (e) => console.warn('[assets] a-assets error', e));
+        // check each asset by fetching its src to validate it is reachable (CORS/404 issues)
+        const assetItems = Array.from(aassets.querySelectorAll('a-asset-item'));
+        for (const item of assetItems) {
+          try {
+            const url = item.getAttribute('src');
+            if (!url) { console.warn('[assets] asset without src', item); continue; }
+            fetch(url, { method: 'HEAD' }).then(r => {
+              if (!r.ok) sendLog('warn', 'asset-head-failed', { url, status: r.status });
+              else sendLog('debug', 'asset-reachable', { url, status: r.status });
+              console.log('[assets] HEAD', url, r.status);
+              if (!r.ok) safeText('Ошибка загрузки ресурсов: ' + url + ' (' + r.status + ')');
+            }).catch(e => { sendLog('error', 'asset-head-err', { url, err: e.message }); console.warn('[assets] HEAD failed fetch', url, e); });
+          } catch (e) { console.warn('[assets] check failed', e); }
+        }
       }
+      // check marker files
+      try {
+        if (marker) {
+          const base = marker.getAttribute('url');
+          if (base) {
+            const exts = ['.iset', '.fset', '.fset3'];
+            for (const ext of exts) {
+              const url = base + ext;
+              fetch(url, { method: 'HEAD' }).then(r => {
+                console.log('[marker] HEAD', url, r.status);
+                if (!r.ok) { sendLog('warn', 'marker-asset-missing', { url, status: r.status }); safeText('Отсутствует файл маркера: ' + url); }
+                else sendLog('debug', 'marker-asset', { url, status: r.status });
+              }).catch(e => { sendLog('error', 'marker-head-err', { url, err: e.message }); console.warn('[marker] HEAD failed', url, e); });
+            }
+          } else {
+            console.warn('[marker] no url attribute'); sendLog('warn', 'marker-missing-url');
+          }
+        }
+      } catch (e) { console.warn('[marker] check failed', e); }
     } catch (e) {
       console.warn('[debug] error while checking arjs/video elements', e);
     }
@@ -182,6 +216,66 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!dev && cams.length > 1) {
               dev = cams[cams.length - 1]; // attempt choose different camera
             }
+
+              // Preview functionality — show models directly in front of camera for debugging
+              function createPreviewEntities() {
+                // create root if doesn't exist
+                let root = document.getElementById('preview-root');
+                if (!root) {
+                  root = document.createElement('a-entity');
+                  root.id = 'preview-root';
+                  // attach to camera to keep it in view
+                  const cam = document.querySelector('[camera]') || scene.querySelector('a-entity[camera]');
+                  if (cam) {
+                    cam.appendChild(root);
+                  } else {
+                    scene.appendChild(root);
+                  }
+                }
+                // remove existing children
+                root.innerHTML = '';
+                // create models as preview children
+                const fox = document.createElement('a-entity');
+                fox.id = 'fox-preview';
+                fox.setAttribute('gltf-model', '#model-fox');
+                fox.setAttribute('position', '-0.6 0 -2');
+                fox.setAttribute('scale', '0.5 0.5 0.5');
+                root.appendChild(fox);
+
+                const hare = document.createElement('a-entity');
+                hare.id = 'hare-preview';
+                hare.setAttribute('gltf-model', '#model-hare');
+                hare.setAttribute('position', '0.6 0 -2');
+                hare.setAttribute('scale', '0.5 0.5 0.5');
+                root.appendChild(hare);
+                // Attach listeners
+                fox.addEventListener('model-loaded', () => { sendLog('info', 'fox preview model loaded'); console.log('[preview] fox loaded'); logModelDetails(fox, 'fox-preview'); });
+                fox.addEventListener('model-error', (e) => { sendLog('error', 'fox preview model error', { err: e }); console.warn('[preview] fox error', e); });
+                hare.addEventListener('model-loaded', () => { sendLog('info', 'hare preview model loaded'); console.log('[preview] hare loaded'); logModelDetails(hare, 'hare-preview'); });
+                hare.addEventListener('model-error', (e) => { sendLog('error', 'hare preview model error', { err: e }); console.warn('[preview] hare error', e); });
+              }
+
+              function destroyPreviewEntities() {
+                const root = document.getElementById('preview-root');
+                if (root) root.remove();
+              }
+
+              if (btnPreviewToggle) {
+                btnPreviewToggle.addEventListener('change', (ev) => {
+                  if (ev.target.checked) {
+                    createPreviewEntities();
+                  } else {
+                    destroyPreviewEntities();
+                  }
+                });
+                // restore toggle if saved
+                try {
+                  const key = 'webar_preview_enabled';
+                  const val = localStorage.getItem(key) === '1';
+                  if (val) { btnPreviewToggle.checked = true; createPreviewEntities(); }
+                  btnPreviewToggle.addEventListener('change', (e) => localStorage.setItem(key, e.target.checked ? '1' : '0'));
+                } catch (e) { }
+              }
             if (dev) constraints = { video: { deviceId: { exact: dev.deviceId } } };
           } catch (e) {
             console.warn('[camera] enumerateDevices failed', e);
@@ -287,6 +381,25 @@ document.addEventListener('DOMContentLoaded', () => {
     console.warn('[model] listener install failed', e);
   }
 
+  function logModelDetails(el, name) {
+    try {
+      const obj3d = el.getObject3D('mesh') || el.getObject3D('group') || el.getObject3D('scene');
+      if (!obj3d) return;
+      const Box3 = AFRAME.THREE.Box3;
+      const Vector3 = AFRAME.THREE.Vector3;
+      const box = new Box3().setFromObject(obj3d);
+      const size = box.getSize(new Vector3());
+      console.log(`[model] ${name} bbox size:`, size);
+      sendLog('debug', 'model-size', { name, size: { x: size.x, y: size.y, z: size.z } });
+    } catch (e) {
+      console.warn('[model] log details failed', e);
+    }
+  }
+  try {
+    if (fox) fox.addEventListener('model-loaded', () => logModelDetails(fox, 'fox'));
+    if (hare) hare.addEventListener('model-loaded', () => logModelDetails(hare, 'hare'));
+  } catch (e) { console.warn('[model] add size listener failed', e); }
+
   // Model error fallback: replace with simple primitives so user can see objects even when model fails
   function installModelFallback(id, fallbackType = 'box') {
     const el = document.getElementById(id);
@@ -309,4 +422,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   installModelFallback('fox-model', 'box');
   installModelFallback('hare-model', 'sphere');
+  installModelFallback('fox-preview', 'box');
+  installModelFallback('hare-preview', 'sphere');
 });
