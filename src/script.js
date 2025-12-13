@@ -1,14 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
   const ui = document.getElementById('ui');
-  const marker = document.querySelector('a-marker');
   const btnShot = document.getElementById('shot');
   const btnFlip = document.getElementById('flip');
 
   function safeText(msg) { if (ui) ui.textContent = msg; }
 
-  if (marker) {
-    marker.addEventListener('markerFound', () => safeText('Hiro‑маркер найден: куб появился.'));
-    marker.addEventListener('markerLost', () => safeText('Маркер потерян. Наведи камеру снова.'));
+  // Логика для NFT‑маркера
+  const nftMarker = document.querySelector('a-nft');
+  if (nftMarker) {
+    nftMarker.addEventListener('markerFound', () => safeText('NFT‑снеговик найден: куб появился.'));
+    nftMarker.addEventListener('markerLost', () => safeText('Снеговик потерян.'));
+  }
+
+  // Логика для Hiro‑маркера
+  const hiroMarker = document.querySelector('a-marker');
+  if (hiroMarker) {
+    hiroMarker.addEventListener('markerFound', () => safeText('Hiro найден: шар появился.'));
+    hiroMarker.addEventListener('markerLost', () => safeText('Hiro потерян.'));
   }
 
   // 📸 Снимок
