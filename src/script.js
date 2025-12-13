@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const ui = document.getElementById('ui');
-  const marker = document.getElementById('marker');
+  const marker = document.querySelector('a-marker');
   const btnShot = document.getElementById('shot');
   const btnFlip = document.getElementById('flip');
   const btnPreviewToggle = document.getElementById('preview-toggle');
@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function safeText(msg) { if (ui) ui.textContent = msg; }
 
   if (marker) {
-    marker.addEventListener('markerFound', () => safeText('Маркер найден: лиса появилась.'));
+    marker.addEventListener('markerFound', () => safeText('Hiro‑маркер найден: лиса появилась.'));
     marker.addEventListener('markerLost', () => safeText('Маркер потерян. Наведи камеру снова.'));
   }
 

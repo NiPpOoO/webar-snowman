@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>WebAR: Лиса возле снеговика</title>
+  <title>WebAR: Лиса на Hiro‑маркер</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 
   <!-- Стабильная версия A-Frame -->
@@ -13,19 +13,20 @@
   <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
-  <div id="ui" class="ui" aria-live="polite">Наведи камеру на снеговика 🦊</div>
+  <div id="ui" class="ui" aria-live="polite">Наведи камеру на Hiro‑маркер 🦊</div>
   <div id="bar" class="bar">
     <button id="flip" class="btn">Сменить камеру</button>
     <button id="shot" class="btn">Снимок</button>
     <label class="btn"><input id="preview-toggle" type="checkbox" /> Превью</label>
   </div>
 
-  <a-scene embedded arjs="trackingMethod: nft; sourceType: webcam; debugUIEnabled: false;">
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
     <a-assets>
       <a-asset-item id="model-fox" src="./assets/models/Fox.glb"></a-asset-item>
     </a-assets>
 
-    <a-nft id="marker" type="nft" url="./assets/markers/snowman/snowman" emitevents="true">
+    <!-- Hiro‑маркер -->
+    <a-marker preset="hiro" emitevents="true">
       <a-entity id="fox-model"
         gltf-model="#model-fox"
         position="0 0 0"
@@ -35,7 +36,7 @@
 
       <a-entity light="type: ambient; intensity: 0.6;"></a-entity>
       <a-entity light="type: directional; intensity: 1.0" position="1 2 1"></a-entity>
-    </a-nft>
+    </a-marker>
 
     <a-entity camera></a-entity>
   </a-scene>
