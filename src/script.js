@@ -3,27 +3,49 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnShot = document.getElementById('shot');
   const btnFlip = document.getElementById('flip');
 
-  function safeText(msg) { if (ui) ui.textContent = msg; }
+  let nftVisible = false;
+  let hiroVisible = false;
 
-  // Логика для NFT‑маркера
+  function updateStatus() {
+    if (nftVisible && hiroVisible) {
+      ui.textContent = 'Оба маркера найдены: снеговик и Hiro 🎯';
+    } else if (nftVisible) {
+      ui.textContent = 'NFT‑снеговик найден: куб появился.';
+    } else if (hiroVisible) {
+      ui.textContent = 'Hiro найден: шар появился.';
+    } else {
+      ui.textContent = 'Наведи камеру на снеговика или Hiro 🦊';
+    }
+  }
+
   const nftMarker = document.querySelector('a-nft');
   if (nftMarker) {
-    nftMarker.addEventListener('markerFound', () => safeText('NFT‑снеговик найден: куб появился.'));
-    nftMarker.addEventListener('markerLost', () => safeText('Снеговик потерян.'));
+    nftMarker.addEventListener('markerFound', () => {
+      nftVisible = true;
+      updateStatus();
+    });
+    nftMarker.addEventListener('markerLost', () => {
+      nftVisible = false;
+      updateStatus();
+    });
   }
 
-  // Логика для Hiro‑маркера
   const hiroMarker = document.querySelector('a-marker');
   if (hiroMarker) {
-    hiroMarker.addEventListener('markerFound', () => safeText('Hiro найден: шар появился.'));
-    hiroMarker.addEventListener('markerLost', () => safeText('Hiro потерян.'));
+    hiroMarker.addEventListener('markerFound', () => {
+      hiroVisible = true;
+      updateStatus();
+    });
+    hiroMarker.addEventListener('markerLost', () => {
+      hiroVisible = false;
+      updateStatus();
+    });
   }
 
-  // 📸 Снимок
   if (btnShot) {
     btnShot.addEventListener('click', () => {
       const canvas = document.querySelector('canvas');
-      if (!canvas) return safeText('Canvas не найден');
+      if (!canvas) return ui.textContent = 'Canvas не найден';
       try {
         const dataURL = canvas.toDataURL('image/png');
         const a = document.createElement('a');
@@ -32,23 +54,24 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(a);
         a.click();
         a.remove();
-        safeText('Снимок сохранён');
+        ui.textContent = 'Снимок сохранён';
       } catch (e) {
         console.error('Screenshot error:', e);
-        safeText('Ошибка при сохранении снимка');
+        ui.textContent = 'Ошибка при сохранении снимка';
       }
     });
   }
 
-  // 🔄 Переключение камеры
   if (btnFlip) {
     btnFlip.addEventListener('click', async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         const video = document.querySelector('video');
         if (video) { video.srcObject = stream; video.play?.(); }
-        safeText('Фронтальная камера включена');
-      } catch (e) { safeText('Не удалось переключить камеру'); }
+        ui.textContent = 'Фронтальная камера включена';
+      } catch (e) {
+        ui.textContent = 'Не удалось переключить камеру';
+      }
     });
   }
 });
