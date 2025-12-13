@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>WebAR: Лиса на Hiro‑маркер</title>
+  <title>WebAR: Куб на Hiro‑маркер</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 
   <!-- Стабильная версия A-Frame -->
@@ -13,20 +13,29 @@
   <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
-  <div id="ui" class="ui" aria-live="polite">Наведи камеру на Hiro‑маркер 🦊</div>
+  <div id="ui" class="ui" aria-live="polite">Наведи камеру на Hiro‑маркер 🟥</div>
   <div id="bar" class="bar">
     <button id="flip" class="btn">Сменить камеру</button>
     <button id="shot" class="btn">Снимок</button>
-    <label class="btn"><input id="preview-toggle" type="checkbox" /> Превью</label>
   </div>
 
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-    <a-assets>
-      <a-asset-item id="model-fox" src="./assets/models/Fox.glb"></a-asset-item>
-    </a-assets>
-
     <!-- Hiro‑маркер -->
     <a-marker preset="hiro" emitevents="true">
+      <!-- Примитив: красный куб -->
+      <a-box id="test-box"
+        position="0 0.5 0"
+        scale="0.5 0.5 0.5"
+        material="color: red;">
+      </a-box>
 
+      <a-entity light="type: ambient; intensity: 0.8;"></a-entity>
+      <a-entity light="type: directional; intensity: 1.2" position="1 2 1"></a-entity>
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script src="./src/script.js"></script>
 </body>
 </html>
