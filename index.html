@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>WebAR Snowman</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <link rel="stylesheet" href="./src/style.css" />
     <script src="./src/script.js" defer></script>
-    <link rel="stylesheet" href="./src/style.css">
   </head>
-  <body style="margin: 0; overflow: hidden;">
+  <body style="margin:0;overflow:hidden;">
+    <!-- AR сцена -->
     <a-scene
       embedded
       arjs="sourceType: webcam; debugUIEnabled: false;"
@@ -22,17 +24,14 @@
         emitevents="true"
         minConfidence="0.5"
       >
-        <a-entity
-          gltf-model="./assets/models/Fox.glb"
-          position="0 0 0"
-          scale="0.5 0.5 0.5"
-        ></a-entity>
+        <!-- Тестовый куб (замена glTF) -->
+        <a-box position="0 0 0" depth="0.5" height="0.5" width="0.5" color="#ff4444"></a-box>
       </a-nft>
 
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- UI -->
+    <!-- UI (вне a-scene, всегда поверх) -->
     <div id="ui">Наведи камеру на снеговика</div>
     <div id="test-status">🔍 Статус: снеговик не найден</div>
     <button id="shot">📸 Снимок</button>

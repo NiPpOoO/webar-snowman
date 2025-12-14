@@ -7,20 +7,28 @@ document.addEventListener('DOMContentLoaded', () => {
   let snowmanVisible = false;
   let resetTimer = null;
 
+  function setUI(text) {
+    if (ui) ui.textContent = text;
+  }
+  function setTestStatus(found) {
+    if (!testStatus) return;
+    testStatus.textContent = found ? '✅ Статус: снеговик найден' : '🔍 Статус: снеговик не найден';
+  }
+
   function updateStatus() {
     if (snowmanVisible) {
-      ui.textContent = 'Снеговик найден 🎯';
-      if (testStatus) testStatus.textContent = '✅ Статус: снеговик найден';
+      setUI('Снеговик найден 🎯');
+      setTestStatus(true);
       clearTimeout(resetTimer);
       resetTimer = setTimeout(() => {
         if (!snowmanVisible) {
-          ui.textContent = 'Наведи камеру на снеговика';
-          if (testStatus) testStatus.textContent = '🔍 Статус: снеговик не найден';
+          setUI('Наведи камеру на снеговика');
+          setTestStatus(false);
         }
       }, 3000);
     } else {
-      ui.textContent = 'Наведи камеру на снеговика';
-      if (testStatus) testStatus.textContent = '🔍 Статус: снеговик не найден';
+      setUI('Наведи камеру на снеговика');
+      setTestStatus(false);
     }
   }
 
@@ -34,12 +42,18 @@ document.addEventListener('DOMContentLoaded', () => {
       snowmanVisible = false;
       updateStatus();
     });
+  } else {
+    // Если метка не найдена в DOM — показать предупреждение
+    setUI('Ошибка: метка не найдена в DOM');
   }
 
   if (btnShot) {
     btnShot.addEventListener('click', () => {
       const canvas = document.querySelector('canvas');
-      if (!canvas) return ui.textContent = 'Canvas не найден';
+      if (!canvas) {
+        setUI('Canvas не найден');
+        return;
+      }
       try {
         const dataURL = canvas.toDataURL('image/png');
         const a = document.createElement('a');
@@ -48,10 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(a);
         a.click();
         a.remove();
-        ui.textContent = 'Снимок сохранён';
+        setUI('Снимок сохранён');
       } catch (e) {
         console.error('Screenshot error:', e);
-        ui.textContent = 'Ошибка при сохранении снимка';
+        setUI('Ошибка при сохранении снимка');
       }
     });
   }
@@ -59,12 +73,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnFlip) {
     btnFlip.addEventListener('click', async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
         const video = document.querySelector('video');
-        if (video) { video.srcObject = stream; video.play?.(); }
-        ui.textContent = 'Фронтальная камера включена';
+        if (video) {
+          video.srcObject = stream;
+          video.play?.();
+        }
+        setUI('Фронтальная камера включена');
       } catch (e) {
-        ui.textContent = 'Не удалось переключить камеру';
+        console.error('Camera flip error:', e);
+        setUI('Не удалось переключить камеру');
       }
     });
   }
