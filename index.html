@@ -1,38 +1,38 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8" />
-  <title>WebAR: Снеговик + Hiro</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>WebAR Snowman</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <script src="./src/script.js" defer></script>
+    <link rel="stylesheet" href="./src/style.css">
+  </head>
+  <body style="margin: 0; overflow: hidden;">
+    <a-scene
+      embedded
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true;"
+    >
+      <a-nft
+        type="nft"
+        url="./assets/markers/snowman/snowman"
+        emitevents="true"
+        minConfidence="0.5"
+      >
+        <a-entity
+          gltf-model="./assets/models/Fox.glb"
+          position="0 0 0"
+          scale="0.5 0.5 0.5"
+        ></a-entity>
+      </a-nft>
 
-  <!-- Стабильная версия A-Frame -->
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <!-- Стабильная версия AR.js -->
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.js"></script>
+      <a-entity camera></a-entity>
+    </a-scene>
 
-  <link rel="stylesheet" href="./src/style.css" />
-</head>
-<body>
-  <div id="ui" class="ui" aria-live="polite">Наведи камеру на снеговика или Hiro 🦊</div>
-  <div id="bar" class="bar">
-    <button id="flip" class="btn">Сменить камеру</button>
-    <button id="shot" class="btn">Снимок</button>
-  </div>
-
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-    <!-- NFT‑маркер снеговика -->
-    <a-nft type="nft" url="./assets/markers/snowman/snowman" emitevents="true">
-      <a-box position="0 0.5 0" scale="0.5 0.5 0.5" material="color: red;"></a-box>
-    </a-nft>
-
-    <!-- Hiro‑маркер -->
-    <a-marker preset="hiro" emitevents="true">
-      <a-sphere position="0 0.5 0" radius="0.3" color="blue"></a-sphere>
-    </a-marker>
-
-    <a-entity camera></a-entity>
-  </a-scene>
-
-  <script src="./src/script.js"></script>
-</body>
+    <div id="ui">Наведи камеру на снеговика</div>
+    <button id="shot">📸 Снимок</button>
+    <button id="flip">🔄 Камера</button>
+  </body>
 </html>

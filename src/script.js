@@ -3,41 +3,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnShot = document.getElementById('shot');
   const btnFlip = document.getElementById('flip');
 
-  let nftVisible = false;
-  let hiroVisible = false;
+  let snowmanVisible = false;
+  let resetTimer = null;
 
   function updateStatus() {
-    if (nftVisible && hiroVisible) {
-      ui.textContent = 'Оба маркера найдены: снеговик и Hiro 🎯';
-    } else if (nftVisible) {
-      ui.textContent = 'NFT‑снеговик найден: куб появился.';
-    } else if (hiroVisible) {
-      ui.textContent = 'Hiro найден: шар появился.';
+    if (snowmanVisible) {
+      ui.textContent = 'Снеговик найден 🎯';
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => {
+        if (!snowmanVisible) {
+          ui.textContent = 'Наведи камеру на снеговика';
+        }
+      }, 3000);
     } else {
-      ui.textContent = 'Наведи камеру на снеговика или Hiro 🦊';
+      ui.textContent = 'Наведи камеру на снеговика';
     }
   }
 
-  const nftMarker = document.querySelector('a-nft');
-  if (nftMarker) {
-    nftMarker.addEventListener('markerFound', () => {
-      nftVisible = true;
+  const snowmanMarker = document.querySelector('a-nft');
+  if (snowmanMarker) {
+    snowmanMarker.addEventListener('markerFound', () => {
+      snowmanVisible = true;
       updateStatus();
     });
-    nftMarker.addEventListener('markerLost', () => {
-      nftVisible = false;
-      updateStatus();
-    });
-  }
-
-  const hiroMarker = document.querySelector('a-marker');
-  if (hiroMarker) {
-    hiroMarker.addEventListener('markerFound', () => {
-      hiroVisible = true;
-      updateStatus();
-    });
-    hiroMarker.addEventListener('markerLost', () => {
-      hiroVisible = false;
+    snowmanMarker.addEventListener('markerLost', () => {
+      snowmanVisible = false;
       updateStatus();
     });
   }
