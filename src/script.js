@@ -2,56 +2,84 @@ document.addEventListener('DOMContentLoaded', () => {
   const ui = document.getElementById('ui');
   const testStatus = document.getElementById('test-status');
   const btnShot = document.getElementById('shot');
-  const debugCube = document.getElementById('debug-cube');
 
-  let snowmanVisible = false;
+  const nftMarker = document.getElementById('nft-snowman');
+  const hiroMarker = document.getElementById('marker-hiro');
+
+  const cubeNft = document.getElementById('cube-nft');
+  const cubeHiro = document.getElementById('cube-hiro');
+
+  let foundBy = null; // 'nft' | 'hiro' | null
   let resetTimer = null;
 
   function setUI(text) { if (ui) ui.textContent = text; }
-  function setTestStatus(found) {
-    if (!testStatus) return;
-    testStatus.textContent = found ? '✅ Статус: снеговик найден' : '🔍 Статус: снеговик не найден';
-  }
-  function setCubeColor(color) {
-    if (!debugCube) return;
-    debugCube.setAttribute('color', color);
-  }
+  function setTestStatus(text) { if (testStatus) testStatus.textContent = text; }
 
-  function updateStatus() {
-    if (snowmanVisible) {
-      setUI('Снеговик найден 🎯');
-      setTestStatus(true);
-      setCubeColor('#22cc22'); // зелёный
+  function clearResetTimer() {
+    if (resetTimer) {
       clearTimeout(resetTimer);
-      resetTimer = setTimeout(() => {
-        if (!snowmanVisible) {
-          setUI('Наведи камеру на снеговика');
-          setTestStatus(false);
-          setCubeColor('#ff4444'); // вернуть красный
-        }
-      }, 3000);
-    } else {
-      setUI('Наведи камеру на снеговика');
-      setTestStatus(false);
-      setCubeColor('#ff4444');
+      resetTimer = null;
     }
   }
 
-  const snowmanMarker = document.querySelector('a-nft');
-  if (snowmanMarker) {
-    snowmanMarker.addEventListener('markerFound', () => {
-      console.log('[markerFound] timestamp:', Date.now());
-      snowmanVisible = true;
-      updateStatus();
+  function scheduleReset() {
+    clearResetTimer();
+    resetTimer = setTimeout(() => {
+      foundBy = null;
+      setUI('Наведи камеру на снеговика');
+      setTestStatus('🔍 Статус: ничего не найдено');
+      if (cubeNft) cubeNft.setAttribute('visible', 'true'), cubeNft.setAttribute('color', '#ff4444');
+      if (cubeHiro) cubeHiro.setAttribute('visible', 'true'), cubeHiro.setAttribute('color', '#4444ff');
+    }, 3000);
+  }
+
+  function onFound(source) {
+    foundBy = source;
+    clearResetTimer();
+    if (source === 'nft') {
+      setUI('Снеговик (NFT) найден 🎯');
+      setTestStatus('✅ Статус: найден по NFT');
+      if (cubeNft) cubeNft.setAttribute('color', '#22cc22');
+      if (cubeHiro) cubeHiro.setAttribute('visible', 'false');
+    } else if (source === 'hiro') {
+      setUI('Метка Hiro найдена 🎯');
+      setTestStatus('✅ Статус: найден по Hiro');
+      if (cubeHiro) cubeHiro.setAttribute('color', '#22cc22');
+      if (cubeNft) cubeNft.setAttribute('visible', 'false');
+    }
+    scheduleReset();
+  }
+
+  function onLost(source) {
+    // при потере — если другой маркер не найден, запустить сброс
+    if (foundBy === source) {
+      foundBy = null;
+      scheduleReset();
+    }
+  }
+
+  // Подключаем события для NFT
+  if (nftMarker) {
+    nftMarker.addEventListener('markerFound', () => {
+      try { console.log('[markerFound] nft'); } catch(e){}
+      onFound('nft');
     });
-    snowmanMarker.addEventListener('markerLost', () => {
-      console.log('[markerLost] timestamp:', Date.now());
-      snowmanVisible = false;
-      updateStatus();
+    nftMarker.addEventListener('markerLost', () => {
+      try { console.log('[markerLost] nft'); } catch(e){}
+      onLost('nft');
     });
-  } else {
-    setUI('Ошибка: метка не найдена в DOM');
-    console.warn('a-nft element not found in DOM');
+  }
+
+  // Подключаем события для Hiro
+  if (hiroMarker) {
+    hiroMarker.addEventListener('markerFound', () => {
+      try { console.log('[markerFound] hiro'); } catch(e){}
+      onFound('hiro');
+    });
+    hiroMarker.addEventListener('markerLost', () => {
+      try { console.log('[markerLost] hiro'); } catch(e){}
+      onLost('hiro');
+    });
   }
 
   // Попытка установить willReadFrequently для canvas (убирает предупреждение)
@@ -60,15 +88,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!canvas) return;
     try {
       canvas.getContext('2d', { willReadFrequently: true });
-      console.log('Canvas 2D context requested with willReadFrequently: true');
     } catch (e) {
-      console.warn('Не удалось установить willReadFrequently:', e);
+      // игнорируем ошибки
     }
   }
   setTimeout(trySetWillReadFrequently, 1200);
   setTimeout(trySetWillReadFrequently, 3000);
 
-  // Снимок
+  // Снимок экрана (canvas)
   if (btnShot) {
     btnShot.addEventListener('click', () => {
       const canvas = document.querySelector('canvas');
@@ -86,9 +113,12 @@ document.addEventListener('DOMContentLoaded', () => {
         a.remove();
         setUI('Снимок сохранён');
       } catch (e) {
-        console.error('Screenshot error:', e);
         setUI('Ошибка при сохранении снимка');
       }
     });
   }
+
+  // Инициализация UI состояния
+  setUI('Наведи камеру на снеговика');
+  setTestStatus('🔍 Статус: ничего не найдено');
 });

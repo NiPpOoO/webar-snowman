@@ -10,30 +10,36 @@
     <script src="./src/script.js" defer></script>
   </head>
   <body style="margin:0;overflow:hidden;">
-    <!-- AR сцена -->
+    <!-- AR сцена: включён debug UI для диагностики -->
     <a-scene
       embedded
-      arjs="sourceType: webcam; debugUIEnabled: false;"
+      arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: mono; patternRatio: 0.5;"
       vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true;"
     >
       <!-- NFT метка снеговика -->
       <a-nft
+        id="nft-snowman"
         type="nft"
         url="./assets/markers/snowman/snowman"
         emitevents="true"
-        minConfidence="0.5"
+        minConfidence="0.3"
       >
-        <!-- Тестовый куб (замена glTF) -->
-        <a-box id="debug-cube" position="0 0 0" depth="0.5" height="0.5" width="0.5" color="#ff4444"></a-box>
+        <!-- Куб-индикатор для NFT -->
+        <a-box id="cube-nft" position="0 0 0" depth="0.5" height="0.5" width="0.5" color="#ff4444"></a-box>
       </a-nft>
+
+      <!-- Hiro метка (временная/дополнительная) -->
+      <a-marker id="marker-hiro" preset="hiro" emitevents="true">
+        <a-box id="cube-hiro" position="0 0.25 0" depth="0.5" height="0.5" width="0.5" color="#4444ff"></a-box>
+      </a-marker>
 
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- UI (вне a-scene, всегда поверх) -->
+    <!-- UI (вне сцены, всегда поверх) -->
     <div id="ui">Наведи камеру на снеговика</div>
-    <div id="test-status">🔍 Статус: снеговик не найден</div>
+    <div id="test-status">🔍 Статус: ничего не найдено</div>
     <button id="shot">📸 Снимок</button>
   </body>
 </html>
