@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const ui = document.getElementById('ui');
+  const testStatus = document.getElementById('test-status');
   const btnShot = document.getElementById('shot');
   const btnFlip = document.getElementById('flip');
 
@@ -9,14 +10,17 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateStatus() {
     if (snowmanVisible) {
       ui.textContent = 'Снеговик найден 🎯';
+      if (testStatus) testStatus.textContent = '✅ Статус: снеговик найден';
       clearTimeout(resetTimer);
       resetTimer = setTimeout(() => {
         if (!snowmanVisible) {
           ui.textContent = 'Наведи камеру на снеговика';
+          if (testStatus) testStatus.textContent = '🔍 Статус: снеговик не найден';
         }
       }, 3000);
     } else {
       ui.textContent = 'Наведи камеру на снеговика';
+      if (testStatus) testStatus.textContent = '🔍 Статус: снеговик не найден';
     }
   }
 

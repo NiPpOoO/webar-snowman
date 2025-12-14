@@ -15,6 +15,7 @@
       vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true;"
     >
+      <!-- NFT метка снеговика -->
       <a-nft
         type="nft"
         url="./assets/markers/snowman/snowman"
@@ -31,7 +32,9 @@
       <a-entity camera></a-entity>
     </a-scene>
 
+    <!-- UI -->
     <div id="ui">Наведи камеру на снеговика</div>
+    <div id="test-status">🔍 Статус: снеговик не найден</div>
     <button id="shot">📸 Снимок</button>
     <button id="flip">🔄 Камера</button>
   </body>
