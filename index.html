@@ -2,26 +2,34 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>WebAR Snowman — Quick Fallback</title>
+    <title>WebAR Snowman — Debug</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
     <link rel="stylesheet" href="./src/style.css" />
     <script src="./src/script.js" defer></script>
+    <script src="./src/debug-canvas.js" defer></script>
   </head>
   <body style="margin:0;overflow:hidden;">
+    <!-- AR сцена -->
     <a-scene
       embedded
-      arjs="sourceType: webcam; debugUIEnabled: false;"
+      arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: color; patternRatio: 0.5;"
       vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true;"
     >
       <!-- NFT метка снеговика -->
-      <a-nft id="nft-snowman" type="nft" url="./assets/markers/snowman/snowman" emitevents="true" minConfidence="0.5">
+      <a-nft
+        id="nft-snowman"
+        type="nft"
+        url="./assets/markers/snowman/snowman"
+        emitevents="true"
+        minConfidence="0.25"
+      >
         <a-box id="cube-nft" position="0 0 0" depth="0.5" height="0.5" width="0.5" color="#ff4444"></a-box>
       </a-nft>
 
-      <!-- Hiro для контроля -->
+      <!-- Hiro метка (контроль) -->
       <a-marker id="marker-hiro" preset="hiro" emitevents="true">
         <a-box id="cube-hiro" position="0 0.25 0" depth="0.5" height="0.5" width="0.5" color="#4444ff"></a-box>
       </a-marker>
@@ -29,12 +37,9 @@
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- UI -->
+    <!-- UI (вне сцены) -->
     <div id="ui">Наведи камеру на снеговика</div>
     <div id="test-status">🔍 Статус: ничего не найдено</div>
     <button id="shot">📸 Снимок</button>
-
-    <!-- Скрытый canvas для анализа (не влияет на сцену) -->
-    <canvas id="ml-canvas" width="160" height="120" style="display:none;"></canvas>
   </body>
 </html>

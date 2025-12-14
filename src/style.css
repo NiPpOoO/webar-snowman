@@ -1,4 +1,4 @@
-/* UI */
+/* src/style.css - UI и кнопки */
 #ui {
   position: fixed;
   bottom: 80px;
@@ -54,3 +54,6 @@ button {
   #test-status { font-size: 13px; padding: 6px 10px; top: 12px; }
   button { padding: 10px 12px; font-size: 15px; }
 }
+
+/* debug canvases styling (создаётся динамически) */
+#debug-test-wrap canvas { box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
