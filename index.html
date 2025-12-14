@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>WebAR Snowman — Debug NFT</title>
+    <title>WebAR Snowman — Quick Fallback</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
@@ -10,26 +10,18 @@
     <script src="./src/script.js" defer></script>
   </head>
   <body style="margin:0;overflow:hidden;">
-    <!-- AR сцена: debugUI включён, detectionMode=color -->
     <a-scene
       embedded
-      arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: color; patternRatio: 0.5;"
+      arjs="sourceType: webcam; debugUIEnabled: false;"
       vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true;"
     >
       <!-- NFT метка снеговика -->
-      <a-nft
-        id="nft-snowman"
-        type="nft"
-        url="./assets/markers/snowman/snowman"
-        emitevents="true"
-        minConfidence="0.25"
-      >
-        <!-- Куб-индикатор для NFT -->
+      <a-nft id="nft-snowman" type="nft" url="./assets/markers/snowman/snowman" emitevents="true" minConfidence="0.5">
         <a-box id="cube-nft" position="0 0 0" depth="0.5" height="0.5" width="0.5" color="#ff4444"></a-box>
       </a-nft>
 
-      <!-- Hiro метка (контроль) -->
+      <!-- Hiro для контроля -->
       <a-marker id="marker-hiro" preset="hiro" emitevents="true">
         <a-box id="cube-hiro" position="0 0.25 0" depth="0.5" height="0.5" width="0.5" color="#4444ff"></a-box>
       </a-marker>
@@ -41,5 +33,8 @@
     <div id="ui">Наведи камеру на снеговика</div>
     <div id="test-status">🔍 Статус: ничего не найдено</div>
     <button id="shot">📸 Снимок</button>
+
+    <!-- Скрытый canvas для анализа (не влияет на сцену) -->
+    <canvas id="ml-canvas" width="160" height="120" style="display:none;"></canvas>
   </body>
 </html>
