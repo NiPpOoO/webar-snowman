@@ -49,7 +49,6 @@ button {
 }
 
 #shot { left: 20px; }
-#flip { right: 20px; }
 
 /* Удобство на мобильных устройствах */
 @media (max-width: 600px) {
