@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 40</title>
+<title>41</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -27,10 +27,9 @@ a-scene{position:fixed !important;inset:0;background:transparent !important;}
 
 <a-scene
   id="scene"
-  embedded
-  device-orientation-permission-ui="enabled:true"
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false; embedded:true;"
   vr-mode-ui="enabled:false"
+  embedded
 >
   <a-camera look-controls="enabled:false"></a-camera>
   <a-entity id="target" mindar-image-target="targetIndex:0">
@@ -45,30 +44,39 @@ const status = document.getElementById('status');
 const scene = document.getElementById('scene');
 const target = document.getElementById('target');
 
-scene.addEventListener('loaded', () => {
-  console.log('A-Frame loaded');
-});
-
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
   startScreen.style.display = 'none';
   status.style.display = 'block';
 
-  const mindarSystem = scene.systems['mindar-image-system'];
-  if(!mindarSystem){
-    alert('Ошибка инициализации AR. Обновите страницу.');
-    return;
-  }
+  // 1️⃣ Создаем video вручную для iOS
+  const video = document.createElement('video');
+  video.setAttribute('autoplay','');
+  video.setAttribute('muted','');
+  video.setAttribute('playsinline','');
+  video.style.position='fixed';
+  video.style.top='0';
+  video.style.left='0';
+  video.style.width='100vw';
+  video.style.height='100vh';
+  video.style.objectFit='cover';
+  video.style.zIndex='0';
+  document.body.appendChild(video);
 
   try {
-    // Для Safari важно использовать await внутри click
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
+    video.srcObject = stream;
+    await video.play();
+
+    // 2️⃣ Передаем этот video в MindAR
+    const mindarSystem = scene.systems['mindar-image-system'];
+    mindarSystem.videoEl = video;
+
     await mindarSystem.start();
-    console.log('MindAR запущен');
+    console.log('MindAR запущен на iOS и Android');
   } catch(e) {
-    alert('Safari заблокировал камеру. Обновите страницу и нажмите «Запустить AR» ещё раз.');
+    alert('Ошибка запуска камеры. Safari может требовать обновление страницы и повторный клик.');
     console.error(e);
-    startBtn.disabled = false;
-    startScreen.style.display = 'flex';
   }
 });
 
