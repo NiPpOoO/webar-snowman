@@ -22,9 +22,10 @@ html, body {
   height: 100%;
   overflow: hidden;
   background: #000;
+  font-family: system-ui, sans-serif;
 }
 
-/* A-Frame scene must be fixed fullscreen */
+/* SCENE FIX (CRITICAL FOR MOBILE) */
 a-scene {
   position: fixed !important;
   top: 0;
@@ -33,7 +34,7 @@ a-scene {
   height: 100vh !important;
 }
 
-/* Camera video fix (CRITICAL for iOS) */
+/* CAMERA VIDEO FIX */
 video {
   position: fixed !important;
   top: 0;
@@ -43,6 +44,56 @@ video {
   object-fit: cover !important;
 }
 
+/* START SCREEN */
+#start {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+#start button {
+  padding: 14px 22px;
+  font-size: 16px;
+  border-radius: 10px;
+  border: none;
+}
+
+/* UI */
+#ui {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 20;
+}
+
+#ui button {
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+#status {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 20;
+}
 </style>
 </head>
 
