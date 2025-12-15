@@ -42,13 +42,19 @@
     <!-- Индикатор состояния -->
     <div id="status">Маркер не виден</div>
     <button id="switchBtn">Сменить модель</button>
+    <script>
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => console.log("✅ Камера доступна"))
+  .catch(err => console.error("❌ Камера не работает:", err));
+</script>
 
     <a-scene
-      vr-mode-ui="enabled: false;"
-      renderer="logarithmicDepthBuffer: true; precision: medium;"
-      embedded
-      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
-    >
+    vr-mode-ui="enabled: false;"
+    renderer="logarithmicDepthBuffer: true; precision: medium;"
+    embedded
+    arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; debugUIEnabled: false;"
+>
+
       <!-- Маркер snowman -->
       <a-nft
         id="snowman"
