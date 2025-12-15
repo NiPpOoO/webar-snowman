@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 29</title>
+<title>WebAR — 30</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -13,80 +13,94 @@
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
-#start { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#000; z-index:100; }
-#start button { padding:14px 22px; font-size:16px; border-radius:10px; border:none; }
-#status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background: rgba(0,0,0,0.65); color:#fff; padding:8px 12px; border-radius:6px; font-size:14px; z-index:101; display:none; }
-a-scene { position:fixed !important; top:0; left:0; width:100vw !important; height:100vh !important; background:transparent !important; z-index:1; }
-video { position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; }
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;}
+#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;z-index:100;}
+#start button{padding:14px 22px;font-size:16px;border-radius:10px;border:none;}
+#ui{position:fixed;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:101;display:none;}
+#ui button{background: rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.3); padding:8px 12px; border-radius:6px; font-size:14px;}
+#status{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background: rgba(0,0,0,0.65);color:#fff;padding:8px 12px;border-radius:6px;font-size:14px;z-index:101;display:none;}
+video#cameraVideo{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;background:transparent;}
+a-scene{position:fixed !important;top:0;left:0;width:100vw !important;height:100vh !important;background:transparent !important;z-index:1;}
 </style>
 </head>
 <body>
 
+<!-- Видео для камеры -->
+<video id="cameraVideo" autoplay muted playsinline></video>
+
+<!-- Стартовый экран -->
 <div id="start">
   <button id="startBtn">Запустить AR</button>
 </div>
 
+<!-- UI -->
+<div id="ui">
+  <button id="btnModel">Сменить модель</button>
+</div>
+
+<!-- Статус -->
 <div id="status">Наведи камеру на маркер</div>
 
+<!-- AR-сцена -->
 <a-scene id="scene"
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false"
   vr-mode-ui="enabled:false"
-  renderer="alpha:true"
->
+  renderer="alpha:true">
+  
   <a-camera look-controls="enabled:false"></a-camera>
 
+  <!-- Target -->
   <a-entity id="target" mindar-image-target="targetIndex:0">
-    <a-box position="0 0 0" depth="0.2" height="0.2" width="0.2" color="#ff0000" visible="true"></a-box>
+    <!-- Модель 1: Куб -->
+    <a-box id="model1" position="0 0 0" depth="0.2" height="0.2" width="0.2" color="#ff0000" visible="true"></a-box>
+    <!-- Модель 2: Другой куб для примера -->
+    <a-box id="model2" position="0 0 0" depth="0.15" height="0.15" width="0.15" color="#00ff00" visible="false"></a-box>
   </a-entity>
 </a-scene>
 
 <script>
-(function(){
+(async ()=>{
   const startBtn = document.getElementById('startBtn');
   const startScreen = document.getElementById('start');
+  const videoEl = document.getElementById('cameraVideo');
+  const ui = document.getElementById('ui');
   const status = document.getElementById('status');
   const scene = document.getElementById('scene');
   const target = document.getElementById('target');
+  const model1 = document.getElementById('model1');
+  const model2 = document.getElementById('model2');
 
-  startBtn.addEventListener('click', async () => {
-    // Создаём video элемент прямо в обработчике клика
-    const video = document.createElement('video');
-    video.setAttribute('autoplay','true');
-    video.setAttribute('muted','true');
-    video.setAttribute('playsinline','true');
-    video.style.position='fixed';
-    video.style.top='0';
-    video.style.left='0';
-    video.style.width='100vw';
-    video.style.height='100vh';
-    video.style.objectFit='cover';
-    video.style.zIndex='0';
-    document.body.appendChild(video);
+  let currentModel = 1;
 
+  startBtn.addEventListener('click', async ()=>{
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      video.srcObject = stream;
-      await video.play(); // Safari требует play внутри клика
-
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
+      videoEl.srcObject = stream;
+      await videoEl.play(); // важно для Safari
       startScreen.style.display = 'none';
+      ui.style.display = 'flex';
       status.style.display = 'block';
 
-      // Ждём, пока система MindAR полностью загрузится
       const mindarSystem = scene.systems['mindar-image-system'];
       if(mindarSystem){
-        await mindarSystem.start({ facingMode: 'environment' });
+        await mindarSystem.start({ facingMode:'environment' });
         console.log("MindAR запущен");
       }
-
-    } catch(err) {
-      console.error("Камера недоступна:", err);
-      alert("Камера недоступна или отказано в доступе. Попробуйте открыть сайт напрямую в Safari.");
+    } catch(e){
+      alert("Камера недоступна или отказано в доступе. В Safari откройте ссылку напрямую и разрешите доступ.");
+      console.error(e);
     }
   });
 
-  target.addEventListener('targetFound', () => { status.textContent = 'Маркер найден'; });
-  target.addEventListener('targetLost', () => { status.textContent = 'Наведи камеру на маркер'; });
+  // Смена модели
+  document.getElementById('btnModel').addEventListener('click', ()=>{
+    currentModel = currentModel===1?2:1;
+    model1.setAttribute('visible', currentModel===1);
+    model2.setAttribute('visible', currentModel===2);
+  });
+
+  target.addEventListener('targetFound', ()=> status.textContent='Маркер найден');
+  target.addEventListener('targetLost', ()=> status.textContent='Наведи камеру на маркер');
 
 })();
 </script>
