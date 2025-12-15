@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <title>WebAR: Снеговик + Модели</title>
+    <title>WebAR: Несколько маркеров снеговика</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <!-- A-Frame -->
@@ -35,14 +35,12 @@
     </style>
   </head>
   <body style="margin:0; overflow:hidden;">
-    <!-- Лоадер -->
     <div class="arjs-loader">
-      <div>Загрузка маркера, подождите…</div>
+      <div>Загрузка маркеров, подождите…</div>
     </div>
 
     <!-- Индикатор состояния -->
-    <div id="status">Снеговик не виден</div>
-    <!-- Кнопка переключения -->
+    <div id="status">Маркер не виден</div>
     <button id="switchBtn">Сменить модель</button>
 
     <a-scene
@@ -51,20 +49,15 @@
       embedded
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- NFT-маркер снеговика -->
+      <!-- Маркер snowman -->
       <a-nft
-        id="snowman-marker"
+        id="snowman"
         type="nft"
         url="https://nippooo.github.io/webar-snowman/assets/markers/snowman/snowman"
         emitevents="true"
-        smooth="true"
-        smoothCount="10"
-        smoothTolerance=".01"
-        smoothThreshold="5"
       >
-        <!-- Модель (по умолчанию Лиса) -->
         <a-entity
-          id="modelEntity"
+          id="model-snowman"
           gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
           scale="0.3 0.3 0.3"
           position="0 0 0"
@@ -72,42 +65,78 @@
         ></a-entity>
       </a-nft>
 
-      <!-- Камера -->
+      <!-- Маркер snowman1 -->
+      <a-nft
+        id="snowman1"
+        type="nft"
+        url="https://nippooo.github.io/webar-snowman/assets/markers/snowman1/snowman1"
+        emitevents="true"
+      >
+        <a-entity
+          id="model-snowman1"
+          gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+          scale="0.3 0.3 0.3"
+          position="0 0 0"
+          visible="false"
+        ></a-entity>
+      </a-nft>
+
+      <!-- Маркер snowman2 -->
+      <a-nft
+        id="snowman2"
+        type="nft"
+        url="https://nippooo.github.io/webar-snowman/assets/markers/snowman2/snowman2"
+        emitevents="true"
+      >
+        <a-entity
+          id="model-snowman2"
+          gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+          scale="0.3 0.3 0.3"
+          position="0 0 0"
+          visible="false"
+        ></a-entity>
+      </a-nft>
+
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      const marker = document.getElementById('snowman-marker');
       const status = document.getElementById('status');
       const switchBtn = document.getElementById('switchBtn');
-      const modelEntity = document.getElementById('modelEntity');
 
-      // Список моделей
       const models = [
         "https://nippooo.github.io/webar-snowman/assets/models/Fox.glb",
-        "https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb"
+        "https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb",
+        "https://nippooo.github.io/webar-snowman/assets/models/Bear.glb"
       ];
       let currentIndex = 0;
 
-      // События маркера
-      marker.addEventListener('markerFound', () => {
-        console.log("[AR.js] Снеговик виден");
-        status.textContent = "Снеговик виден";
-        modelEntity.setAttribute('visible', true);
-      });
+      function setupMarker(markerId, modelId, markerName) {
+        const marker = document.getElementById(markerId);
+        const modelEntity = document.getElementById(modelId);
 
-      marker.addEventListener('markerLost', () => {
-        console.log("[AR.js] Снеговик не виден");
-        status.textContent = "Снеговик не виден";
-        // модель остаётся видимой
-      });
+        marker.addEventListener('markerFound', () => {
+          console.log(`[AR.js] ${markerName} виден`);
+          status.textContent = `${markerName} виден`;
+          modelEntity.setAttribute('visible', true);
+        });
 
-      // Переключение модели
-      switchBtn.addEventListener('click', () => {
-        currentIndex = (currentIndex + 1) % models.length;
-        modelEntity.setAttribute('gltf-model', models[currentIndex]);
-        console.log("Модель переключена на:", models[currentIndex]);
-      });
+        marker.addEventListener('markerLost', () => {
+          console.log(`[AR.js] ${markerName} не виден`);
+          status.textContent = `${markerName} не виден`;
+          // модель остаётся видимой
+        });
+
+        switchBtn.addEventListener('click', () => {
+          currentIndex = (currentIndex + 1) % models.length;
+          modelEntity.setAttribute('gltf-model', models[currentIndex]);
+          console.log(`${markerName}: модель переключена на`, models[currentIndex]);
+        });
+      }
+
+      setupMarker('snowman', 'model-snowman', 'Снеговик');
+      setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
+      setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
     </script>
   </body>
 </html>
