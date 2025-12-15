@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>WebAR Snowman — 1 </title>
+  <title>WebAR Snowman — Android First</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 
-  <!-- A-Frame (stable) -->
+  <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
 
   <!-- AR.js NFT -->
@@ -72,7 +72,7 @@
   arjs="
     sourceType: webcam;
     facingMode: environment;
-    trackingMethod: nft;
+    trackingMethod: best;
     debugUIEnabled: false;
   "
 >
@@ -88,7 +88,7 @@
       class="model"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
       scale="0.3 0.3 0.3"
-      position="0 0.02 0"
+      position="0 0 0"
       visible="false"
     ></a-entity>
   </a-nft>
@@ -104,7 +104,7 @@
       class="model"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
       scale="0.3 0.3 0.3"
-      position="0 0.02 0"
+      position="0 0 0"
       visible="false"
     ></a-entity>
   </a-nft>
@@ -120,10 +120,13 @@
       class="model"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
       scale="0.3 0.3 0.3"
-      position="0 0.02 0"
+      position="0 0 0"
       visible="false"
     ></a-entity>
   </a-nft>
+
+  <!-- CAMERA -->
+  <a-entity camera></a-entity>
 
 </a-scene>
 
@@ -159,7 +162,8 @@
   switchBtn.addEventListener('click', () => {
     currentModel = (currentModel + 1) % models.length;
 
-    document.querySelectorAll('.model').forEach(model => {
+    visibleMarkers.forEach(marker => {
+      const model = marker.querySelector('.model');
       model.setAttribute('gltf-model', models[currentModel]);
     });
   });
