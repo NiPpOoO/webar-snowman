@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 4Final Stable</title>
+<title>WebAR — 5Final Stable</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -44,7 +44,6 @@ video, canvas {
 #start {
   position: fixed;
   inset: 0;
-  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -163,8 +162,26 @@ video, canvas {
     status.style.display = 'block';
 
     const mindarSystem = scene.systems['mindar-image-system'];
-    await mindarSystem.start();
+    await mindarSystem.start({ facingMode: 'environment' });
   });
+  // START AR
+startBtn.addEventListener('click', async () => {
+  startScreen.style.display = 'none';
+  ui.style.display = 'flex';
+  status.style.display = 'block';
+
+  const mindarSystem = scene.systems['mindar-image-system'];
+  await mindarSystem.start({ facingMode: 'environment' }); // явно задняя камера
+
+  // ✅ Видео камеры на весь экран
+  const videoEl = document.querySelector('video');
+  if(videoEl){
+    videoEl.style.width = '100vw';
+    videoEl.style.height = '100vh';
+    videoEl.style.objectFit = 'cover';
+  }
+});
+
 
   // CAMERA SWITCH
   btnCamera.addEventListener('click', async () => {
@@ -173,6 +190,23 @@ video, canvas {
     await mindarSystem.stop();
     await mindarSystem.start({ facingMode });
   });
+  
+  btnCamera.addEventListener('click', async () => {
+  const mindarSystem = scene.systems['mindar-image-system'];
+  facingMode = facingMode === 'environment' ? 'user' : 'environment';
+  await mindarSystem.stop();
+  await mindarSystem.start({ facingMode });
+
+  // Видео камеры снова растянуть на весь экран
+  const videoEl = document.querySelector('video');
+  if(videoEl){
+    videoEl.style.width = '100vw';
+    videoEl.style.height = '100vh';
+    videoEl.style.objectFit = 'cover';
+  }
+});
+
+
 
   // MODEL SWITCH
   btnModel.addEventListener('click', () => {
