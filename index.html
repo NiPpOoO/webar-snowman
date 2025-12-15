@@ -5,9 +5,8 @@
 <title>WebAR — 37</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- ✅ ВАЖНО: СОВМЕСТИМЫЕ ВЕРСИИ -->
+<!-- ✅ СОВМЕСТИМЫЕ ВЕРСИИ -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
@@ -18,6 +17,7 @@ html,body{
   width:100%;
   height:100%;
   overflow:hidden;
+  
 }
 
 #start{
@@ -69,14 +69,18 @@ a-scene{
 
 <a-scene
   id="scene"
-  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false"
+  embedded
+  device-orientation-permission-ui="enabled:true"
+  mindar-image="
+    imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind;
+    autoStart:false;
+    embedded:true;
+  "
   vr-mode-ui="enabled:false"
 >
   <a-camera look-controls="enabled:false"></a-camera>
 
-  <!-- 🎯 TARGET -->
   <a-entity id="target" mindar-image-target="targetIndex:0">
-    <!-- 🧱 TEST OBJECT -->
     <a-box
       position="0 0 0"
       width="0.25"
@@ -94,27 +98,36 @@ const status = document.getElementById('status');
 const scene = document.getElementById('scene');
 const target = document.getElementById('target');
 
+let started = false;
+
+scene.addEventListener('loaded', () => {
+  console.log('A-Scene loaded');
+});
+
 startBtn.addEventListener('click', () => {
-  // ⚠️ Safari требует прямой user gesture
+  if (started) return;
+  started = true;
+
   startBtn.disabled = true;
   startScreen.style.display = 'none';
   status.style.display = 'block';
 
   const mindarSystem = scene.systems['mindar-image-system'];
 
-  // ⏳ Без await — иначе Safari ломается
   setTimeout(() => {
     try {
       mindarSystem.start();
       console.log('MindAR запущен');
     } catch (e) {
-      alert('Ошибка запуска камеры. Обнови страницу и попробуй ещё раз.');
+      started = false;
+      startBtn.disabled = false;
+      startScreen.style.display = 'flex';
+      alert('Safari заблокировал камеру. Нажми «Запустить AR» ещё раз.');
       console.error(e);
     }
-  }, 0);
+  }, 100);
 });
 
-// UI feedback
 target.addEventListener('targetFound', () => {
   status.textContent = 'Маркер найден';
 });
