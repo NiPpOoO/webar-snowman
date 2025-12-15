@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 5Final Stable</title>
+<title>WebAR — 6Final Stable</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -155,15 +155,6 @@ video, canvas {
   let facingMode = 'environment';
   let currentModel = 1;
 
-  // START AR (REQUIRED FOR iOS)
-  startBtn.addEventListener('click', async () => {
-    startScreen.style.display = 'none';
-    ui.style.display = 'flex';
-    status.style.display = 'block';
-
-    const mindarSystem = scene.systems['mindar-image-system'];
-    await mindarSystem.start({ facingMode: 'environment' });
-  });
   // START AR
 startBtn.addEventListener('click', async () => {
   startScreen.style.display = 'none';
@@ -171,9 +162,9 @@ startBtn.addEventListener('click', async () => {
   status.style.display = 'block';
 
   const mindarSystem = scene.systems['mindar-image-system'];
-  await mindarSystem.start({ facingMode: 'environment' }); // явно задняя камера
+  await mindarSystem.start({ facingMode: 'environment' });
 
-  // ✅ Видео камеры на весь экран
+  // Видео камеры на весь экран
   const videoEl = document.querySelector('video');
   if(videoEl){
     videoEl.style.width = '100vw';
@@ -182,16 +173,8 @@ startBtn.addEventListener('click', async () => {
   }
 });
 
-
-  // CAMERA SWITCH
-  btnCamera.addEventListener('click', async () => {
-    const mindarSystem = scene.systems['mindar-image-system'];
-    facingMode = facingMode === 'environment' ? 'user' : 'environment';
-    await mindarSystem.stop();
-    await mindarSystem.start({ facingMode });
-  });
-  
-  btnCamera.addEventListener('click', async () => {
+// CAMERA SWITCH
+btnCamera.addEventListener('click', async () => {
   const mindarSystem = scene.systems['mindar-image-system'];
   facingMode = facingMode === 'environment' ? 'user' : 'environment';
   await mindarSystem.stop();
@@ -205,6 +188,9 @@ startBtn.addEventListener('click', async () => {
     videoEl.style.objectFit = 'cover';
   }
 });
+
+
+
 
 
 
