@@ -107,26 +107,12 @@
     setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
     setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
 
-    // 🔧 Подмена потока камеры с мягкими constraints и fallback
+    // 🔧 Универсальные constraints без ошибок и зума
     window.addEventListener('load', async () => {
       try {
-        const constraints = {
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          }
-        };
-
-        let stream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (err) {
-          console.warn("⚠️ FHD не доступна, fallback на авторазмер");
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" }
-          });
-        }
+        let stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }
+        });
 
         const sceneEl = document.querySelector('a-scene');
         const arSource = sceneEl.systems.arjs.arSource;
