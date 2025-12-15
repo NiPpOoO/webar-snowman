@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>WebAR Snowman — Fixed NFT</title>
+  <title>WebAR Snowman — NFT + Проверка совместимости</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 
   <!-- A-Frame -->
@@ -24,6 +24,11 @@
       position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
       background:#000; color:#fff; z-index:20;
     }
+    #unsupported {
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      background:#000; color:#fff; font-size:15px; text-align:center;
+      padding:20px; z-index:30;
+    }
   </style>
 </head>
 <body>
@@ -33,7 +38,20 @@
 <button id="switchBtn">Сменить модель</button>
 <button id="cameraBtn">Сменить камеру</button>
 
+<!-- Сообщение о несовместимости -->
+<div id="unsupported" style="display:none;">
+  ❌ Ваше устройство или браузер не поддерживает WebAR.<br><br>
+  Поддерживаемые браузеры:<br>
+  • Safari (iOS 13+)<br>
+  • Chrome (Android/iOS, Windows, macOS)<br>
+  • Firefox (Android, Windows, macOS)<br>
+  • Edge (Android/iOS, Windows)<br>
+  • Яндекс.Браузер (Android/iOS)<br><br>
+  Попробуйте открыть сайт в одном из них.
+</div>
+
 <a-scene
+  id="scene"
   embedded
   vr-mode-ui="enabled: false"
   renderer="antialias: true;"
@@ -72,6 +90,8 @@
 const status = document.getElementById('status');
 const switchBtn = document.getElementById('switchBtn');
 const cameraBtn = document.getElementById('cameraBtn');
+const unsupported = document.getElementById('unsupported');
+const scene = document.getElementById('scene');
 
 const models = [
   'assets/models/Fox1.glb',
@@ -81,6 +101,24 @@ const models = [
 
 let currentModel = 0;
 let visibleMarkers = new Set();
+
+// Проверка поддержки WebGL и камеры
+function checkSupport() {
+  const webglOK = (() => {
+    try {
+      const c = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl')));
+    } catch { return false; }
+  })();
+  const mediaOK = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+  if (!webglOK || !mediaOK) {
+    unsupported.style.display = 'flex';
+    scene.style.display = 'none';
+    document.querySelector('.arjs-loader').style.display = 'none';
+  }
+}
+checkSupport();
 
 // Маркеры
 document.querySelectorAll('a-nft').forEach(marker => {
@@ -124,7 +162,6 @@ cameraBtn.addEventListener('click', async () => {
 });
 
 // События сцены
-const scene = document.querySelector('a-scene');
 scene.addEventListener('loaded', () => {
   document.querySelector('.arjs-loader').style.display = 'none';
 });
