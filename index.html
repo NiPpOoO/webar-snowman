@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 7Final Stable</title>
+<title>WebAR — 8</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -29,15 +29,18 @@ a-scene {
   left: 0;
   width: 100vw !important;
   height: 100vh !important;
+  z-index: 2;
+  background: transparent !important;
 }
 
-canvas {
+canvas, video {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
   object-fit: cover !important;
+  z-index: 1;
 }
 
 /* START SCREEN */
@@ -48,6 +51,7 @@ canvas {
   align-items: center;
   justify-content: center;
   z-index: 100;
+  background: #000;
 }
 
 #start button {
@@ -89,16 +93,6 @@ canvas {
   font-size: 14px;
   z-index: 20;
 }
-video {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  object-fit: cover !important;
-  z-index: 1; /* чтобы быть под UI */
-}
-
 </style>
 </head>
 
@@ -125,14 +119,10 @@ video {
   renderer="alpha: true"
   background="color: transparent"
 >
-
-
-
   <a-camera look-controls="enabled:false"></a-camera>
 
   <!-- TARGET -->
   <a-entity id="target" mindar-image-target="targetIndex:0">
-
     <!-- MODEL 1 -->
     <a-entity id="model1" visible="true">
       <a-sphere position="0 0.15 0" radius="0.15" color="#ffffff"></a-sphere>
@@ -143,14 +133,11 @@ video {
     <a-entity id="model2" visible="false">
       <a-box position="0 0 0" width="0.3" height="0.3" depth="0.3" color="#ff6600"></a-box>
     </a-entity>
-
   </a-entity>
-
 </a-scene>
 
 <script>
 (() => {
-
   const startBtn = document.getElementById('startBtn');
   const startScreen = document.getElementById('start');
   const ui = document.getElementById('ui');
@@ -168,43 +155,34 @@ video {
   let currentModel = 1;
 
   // START AR
-startBtn.addEventListener('click', async () => {
-  startScreen.style.display = 'none';
-  ui.style.display = 'flex';
-  status.style.display = 'block';
+  async function startAR(facing) {
+    startScreen.style.display = 'none';
+    ui.style.display = 'flex';
+    status.style.display = 'block';
 
-  const mindarSystem = scene.systems['mindar-image-system'];
-  await mindarSystem.start({ facingMode: 'environment' });
+    const mindarSystem = scene.systems['mindar-image-system'];
+    await mindarSystem.start({ facingMode: facing });
 
-  // Видео камеры на весь экран
-  const videoEl = document.querySelector('video');
-  if(videoEl){
-    videoEl.style.width = '100vw';
-    videoEl.style.height = '100vh';
-    videoEl.style.objectFit = 'cover';
+    // Видео камеры на весь экран через небольшой timeout
+    setTimeout(() => {
+      const videoEl = document.querySelector('video');
+      if(videoEl){
+        videoEl.style.width = '100vw';
+        videoEl.style.height = '100vh';
+        videoEl.style.objectFit = 'cover';
+      }
+    }, 500);
   }
-});
 
-// CAMERA SWITCH
-btnCamera.addEventListener('click', async () => {
-  const mindarSystem = scene.systems['mindar-image-system'];
-  facingMode = facingMode === 'environment' ? 'user' : 'environment';
-  await mindarSystem.stop();
-  await mindarSystem.start({ facingMode });
+  startBtn.addEventListener('click', () => startAR('environment'));
 
-  // Видео камеры снова растянуть на весь экран
-  const videoEl = document.querySelector('video');
-  if(videoEl){
-    videoEl.style.width = '100vw';
-    videoEl.style.height = '100vh';
-    videoEl.style.objectFit = 'cover';
-  }
-});
-
-
-
-
-
+  // CAMERA SWITCH
+  btnCamera.addEventListener('click', async () => {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    const mindarSystem = scene.systems['mindar-image-system'];
+    await mindarSystem.stop();
+    await startAR(facingMode);
+  });
 
   // MODEL SWITCH
   btnModel.addEventListener('click', () => {
@@ -221,7 +199,6 @@ btnCamera.addEventListener('click', async () => {
   target.addEventListener('targetLost', () => {
     status.textContent = 'Наведи камеру на маркер';
   });
-
 })();
 </script>
 
