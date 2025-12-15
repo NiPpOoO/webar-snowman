@@ -107,18 +107,27 @@
     setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
     setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
 
-    // 🔧 Подмена потока камеры с явными constraints
+    // 🔧 Подмена потока камеры с мягкими constraints и fallback
     window.addEventListener('load', async () => {
       try {
         const constraints = {
           video: {
-            facingMode: { exact: "environment" },
+            facingMode: { ideal: "environment" },
             width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            aspectRatio: { ideal: 1.777 } // 16:9
+            height: { ideal: 1080 }
           }
         };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (err) {
+          console.warn("⚠️ FHD не доступна, fallback на авторазмер");
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" }
+          });
+        }
+
         const sceneEl = document.querySelector('a-scene');
         const arSource = sceneEl.systems.arjs.arSource;
 
@@ -134,8 +143,12 @@
         arSource.onResizeElement();
         arSource.copyElementSizeTo(sceneEl.canvas);
 
-        console.log("✅ Камера запущена без зума");
+        // Вывести реальные параметры камеры
+        const settings = stream.getVideoTracks()[0].getSettings();
+        console.log("📷 Камера активна:", settings);
+        status.textContent = `Камера: ${settings.width}×${settings.height}`;
       } catch (err) {
+        console.error("❌ Ошибка камеры:", err);
         status.textContent = `Ошибка камеры: ${err.name}`;
       }
     });
