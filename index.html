@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 15</title>
+<title>WebAR — 16</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -23,6 +23,7 @@ html, body {
   overflow: hidden;
 }
 
+/* Сцена поверх видео */
 a-scene {
   position: fixed !important;
   top: 0;
@@ -30,18 +31,19 @@ a-scene {
   width: 100vw !important;
   height: 100vh !important;
   background: transparent !important;
-  z-index: 2;
+  z-index: 1;
 }
 
-canvas, video {
+/* Видео на фоне */
+video {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
+  top: 0;
+  left: 0;
   width: 100vw !important;
   height: 100vh !important;
   object-fit: cover !important;
+  z-index: 0;
   background: transparent !important;
-  z-index: 1;
 }
 
 /* START SCREEN */
@@ -70,7 +72,7 @@ canvas, video {
   transform: translateX(-50%);
   display: flex;
   gap: 8px;
-  z-index: 20;
+  z-index: 101;
   display: none;
 }
 
@@ -93,7 +95,7 @@ canvas, video {
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 14px;
-  z-index: 20;
+  z-index: 101;
   display: none;
 }
 </style>
@@ -155,11 +157,25 @@ canvas, video {
   let facingMode = 'environment';
   let currentModel = 1;
 
-  async function startAR(facing) {
+  async function startAR(facing){
     // Прямой запрос камеры
     try {
-      await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
       console.log("Камера разрешена");
+
+      // Вынести видео наружу
+      const videoEl = document.querySelector('video');
+      if(videoEl){
+        document.body.appendChild(videoEl);
+        videoEl.style.position = 'fixed';
+        videoEl.style.top = '0';
+        videoEl.style.left = '0';
+        videoEl.style.width = '100vw';
+        videoEl.style.height = '100vh';
+        videoEl.style.objectFit = 'cover';
+        videoEl.style.zIndex = '0';
+      }
+
     } catch(err){
       alert("Доступ к камере запрещен или недоступен");
       return;
@@ -179,13 +195,6 @@ canvas, video {
       ui.style.display = 'none';
       status.style.display = 'none';
       return;
-    }
-
-    const videoEl = document.querySelector('video');
-    if(videoEl){
-      videoEl.style.width = '100vw';
-      videoEl.style.height = '100vh';
-      videoEl.style.objectFit = 'cover';
     }
   }
 
