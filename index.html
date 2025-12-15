@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 72</title>
+<title>WebAR — 73</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -89,19 +89,28 @@ startBtn.addEventListener('click', () => {
 
   const model = document.createElement('a-entity');
   model.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  model.setAttribute('scale', '0.3 0.3 0.3');  // подбирается под маркер
-  model.setAttribute('position', '-0.3 -0.3 0'); // относительно маркера
-  model.setAttribute('animation-mixer', 'loop: repeat'); // пока без clip
+  model.setAttribute('scale', '0.3 0.3 0.3');
+  model.setAttribute('position', '-0.3 -0.3 0');
 
-  // 🔎 Выводим список анимаций после загрузки модели
+  // 🔎 Запуск анимации вручную через THREE.AnimationMixer
   model.addEventListener('model-loaded', (e) => {
     const mesh = e.detail.model;
     if (mesh.animations && mesh.animations.length > 0) {
-      const names = mesh.animations.map(a => a.name);
-      console.log('Анимации в GLB:', names);
-      status.textContent = '✅ Найдены анимации: ' + names.join(', ');
+      console.log('Анимации в GLB:', mesh.animations.map(a => a.name));
+      const mixer = new THREE.AnimationMixer(mesh);
+      const clip = THREE.AnimationClip.findByName(mesh.animations, 'mixamo.com.003');
+      if (clip) {
+        const action = mixer.clipAction(clip);
+        action.play();
+        status.textContent = '▶️ Запущена анимация: ' + clip.name;
+        // обновляем анимацию каждый кадр
+        scene.addEventListener('tick', (ev) => {
+          mixer.update(ev.detail.delta / 1000);
+        });
+      } else {
+        status.textContent = '❌ Клип mixamo.com.003 не найден';
+      }
     } else {
-      console.log('В GLB нет анимаций');
       status.textContent = '❌ В GLB нет анимаций';
     }
   });
@@ -118,7 +127,6 @@ startBtn.addEventListener('click', () => {
     }
 
     try {
-      // Старт MindAR через user gesture
       await mindarSystem.start();
       console.log('MindAR запущен');
 
