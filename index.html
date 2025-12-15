@@ -2,20 +2,23 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 28</title>
+<title>WebAR — 29</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
+<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;}
-#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;z-index:100;}
-#start button{padding:14px 22px;font-size:16px;border-radius:10px;border:none;}
-#status{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background: rgba(0,0,0,0.65);color:#fff;padding:8px 12px;border-radius:6px;font-size:14px;z-index:101;display:none;}
-a-scene{position:fixed !important;top:0;left:0;width:100vw !important;height:100vh !important;background:transparent !important;z-index:1;}
-video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;}
+html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
+#start { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#000; z-index:100; }
+#start button { padding:14px 22px; font-size:16px; border-radius:10px; border:none; }
+#status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background: rgba(0,0,0,0.65); color:#fff; padding:8px 12px; border-radius:6px; font-size:14px; z-index:101; display:none; }
+a-scene { position:fixed !important; top:0; left:0; width:100vw !important; height:100vh !important; background:transparent !important; z-index:1; }
+video { position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; }
 </style>
 </head>
 <body>
@@ -29,8 +32,10 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
 <a-scene id="scene"
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false"
   vr-mode-ui="enabled:false"
-  renderer="alpha:true">
+  renderer="alpha:true"
+>
   <a-camera look-controls="enabled:false"></a-camera>
+
   <a-entity id="target" mindar-image-target="targetIndex:0">
     <a-box position="0 0 0" depth="0.2" height="0.2" width="0.2" color="#ff0000" visible="true"></a-box>
   </a-entity>
@@ -44,50 +49,44 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
   const scene = document.getElementById('scene');
   const target = document.getElementById('target');
 
-  let video;
-
-  startBtn.onclick = async function() {
-    // Проверка поддержки getUserMedia
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      alert("Ваш браузер не поддерживает камеру. Используйте Safari или Chrome на iOS/Android.");
-      return;
-    }
-
-    // Создаем видео элемент один раз
-    if(!video){
-      video = document.createElement('video');
-      video.setAttribute('autoplay','true');
-      video.setAttribute('muted','true');
-      video.setAttribute('playsinline','true');
-      video.style.position='fixed';
-      video.style.top='0';
-      video.style.left='0';
-      video.style.width='100vw';
-      video.style.height='100vh';
-      video.style.objectFit='cover';
-      video.style.zIndex='0';
-      document.body.appendChild(video);
-    }
+  startBtn.addEventListener('click', async () => {
+    // Создаём video элемент прямо в обработчике клика
+    const video = document.createElement('video');
+    video.setAttribute('autoplay','true');
+    video.setAttribute('muted','true');
+    video.setAttribute('playsinline','true');
+    video.style.position='fixed';
+    video.style.top='0';
+    video.style.left='0';
+    video.style.width='100vw';
+    video.style.height='100vh';
+    video.style.objectFit='cover';
+    video.style.zIndex='0';
+    document.body.appendChild(video);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       video.srcObject = stream;
-      await video.play();
+      await video.play(); // Safari требует play внутри клика
 
-      startScreen.style.display='none';
-      status.style.display='block';
+      startScreen.style.display = 'none';
+      status.style.display = 'block';
 
+      // Ждём, пока система MindAR полностью загрузится
       const mindarSystem = scene.systems['mindar-image-system'];
-      if(mindarSystem) await mindarSystem.start({ facingMode:'environment' });
+      if(mindarSystem){
+        await mindarSystem.start({ facingMode: 'environment' });
+        console.log("MindAR запущен");
+      }
 
-    } catch(e){
-      console.error("Камера недоступна:", e);
-      alert("Камера недоступна или отказано в доступе. Попробуйте открыть ссылку через Telegram или другой браузер.");
+    } catch(err) {
+      console.error("Камера недоступна:", err);
+      alert("Камера недоступна или отказано в доступе. Попробуйте открыть сайт напрямую в Safari.");
     }
-  };
+  });
 
-  target.addEventListener('targetFound', () => status.textContent='Маркер найден');
-  target.addEventListener('targetLost', () => status.textContent='Наведи камеру на маркер');
+  target.addEventListener('targetFound', () => { status.textContent = 'Маркер найден'; });
+  target.addEventListener('targetLost', () => { status.textContent = 'Наведи камеру на маркер'; });
 
 })();
 </script>
