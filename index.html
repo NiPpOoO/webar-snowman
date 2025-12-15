@@ -1,171 +1,140 @@
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="utf-8" />
-    <title>WebAR: Несколько маркеров снеговика</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<head>
+  <meta charset="utf-8" />
+  <title>WebAR: Несколько маркеров снеговика</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- A-Frame -->
-    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
-    <!-- AR.js с поддержкой NFT -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+  <!-- A-Frame -->
+  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
+  <!-- AR.js -->
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
-    <style>
-      #status {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        padding: 8px 12px;
-        background: rgba(0,0,0,0.6);
-        color: #fff;
-        border-radius: 6px;
-        font-size: 14px;
-      }
-      #switchBtn {
-        position: absolute;
-        top: 50px;
-        right: 10px;
-        padding: 8px 12px;
-        background: rgba(0,0,0,0.6);
-        color: #fff;
-        border-radius: 6px;
-        font-size: 14px;
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body style="margin:0; overflow:hidden;">
-    <div class="arjs-loader">
-      <div>Загрузка маркеров, подождите…</div>
-    </div>
+  <style>
+    #status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    #switchBtn, #cameraBtn {
+      position: absolute;
+      right: 10px;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #switchBtn { top: 50px; }
+    #cameraBtn { top: 90px; }
+  </style>
+</head>
+<body style="margin:0; overflow:hidden;">
+  <div class="arjs-loader">
+    <div>Загрузка маркеров, подождите…</div>
+  </div>
 
-    <!-- Индикатор состояния -->
-    <div id="status">Маркер не виден</div>
-    <button id="switchBtn">Сменить модель</button>
-    <script>
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => console.log("✅ Камера доступна"))
-  .catch(err => console.error("❌ Камера не работает:", err));
-</script>
+  <!-- Индикатор состояния -->
+  <div id="status">Маркер не виден</div>
+  <button id="switchBtn">Сменить модель</button>
+  <button id="cameraBtn">Сменить камеру</button>
 
-<script>
-navigator.mediaDevices.enumerateDevices().then(devices => {
-  const videoDevices = devices.filter(d => d.kind === "videoinput");
-  const backCam = videoDevices.find(d => d.label.toLowerCase().includes("back"));
-
-  const constraints = backCam
-    ? { video: { deviceId: { exact: backCam.deviceId } } }
-    : { video: { facingMode: { exact: "environment" } } };
-
-  navigator.mediaDevices.getUserMedia(constraints)
-    .then(stream => {
-      console.log("✅ Камера подключена");
-      const video = document.querySelector("video");
-      if (video) video.srcObject = stream;
-    })
-    .catch(err => {
-      const status = document.getElementById('status');
-      status.textContent = `Ошибка камеры: ${err.name}`;
-      alert("Ошибка камеры: " + err.name + "\n" + err.message);
-    });
-});
-</script>
-
-    <a-scene
+  <a-scene
     vr-mode-ui="enabled: false;"
     renderer="logarithmicDepthBuffer: true; precision: medium;"
     embedded
     arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; debugUIEnabled: false;"
->
+  >
+    <!-- Маркеры -->
+    <a-nft id="snowman" type="nft"
+      url="https://nippooo.github.io/webar-snowman/assets/markers/snowman/snowman"
+      emitevents="true">
+      <a-entity id="model-snowman"
+        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+        scale="0.3 0.3 0.3" position="0 0 0" visible="false"></a-entity>
+    </a-nft>
 
-      <!-- Маркер snowman -->
-      <a-nft
-        id="snowman"
-        type="nft"
-        url="https://nippooo.github.io/webar-snowman/assets/markers/snowman/snowman"
-        emitevents="true"
-      >
-        <a-entity
-          id="model-snowman"
-          gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-          scale="0.3 0.3 0.3"
-          position="0 0 0"
-          visible="false"
-        ></a-entity>
-      </a-nft>
+    <a-nft id="snowman1" type="nft"
+      url="https://nippooo.github.io/webar-snowman/assets/markers/snowman1/snowman1"
+      emitevents="true">
+      <a-entity id="model-snowman1"
+        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+        scale="0.3 0.3 0.3" position="0 0 0" visible="false"></a-entity>
+    </a-nft>
 
-      <!-- Маркер snowman1 -->
-      <a-nft
-        id="snowman1"
-        type="nft"
-        url="https://nippooo.github.io/webar-snowman/assets/markers/snowman1/snowman1"
-        emitevents="true"
-      >
-        <a-entity
-          id="model-snowman1"
-          gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-          scale="0.3 0.3 0.3"
-          position="0 0 0"
-          visible="false"
-        ></a-entity>
-      </a-nft>
+    <a-nft id="snowman2" type="nft"
+      url="https://nippooo.github.io/webar-snowman/assets/markers/snowman2/snowman2"
+      emitevents="true">
+      <a-entity id="model-snowman2"
+        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+        scale="0.3 0.3 0.3" position="0 0 0" visible="false"></a-entity>
+    </a-nft>
 
-      <!-- Маркер snowman2 -->
-      <a-nft
-        id="snowman2"
-        type="nft"
-        url="https://nippooo.github.io/webar-snowman/assets/markers/snowman2/snowman2"
-        emitevents="true"
-      >
-        <a-entity
-          id="model-snowman2"
-          gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-          scale="0.3 0.3 0.3"
-          position="0 0 0"
-          visible="false"
-        ></a-entity>
-      </a-nft>
+    <a-entity camera></a-entity>
+  </a-scene>
 
-      <a-entity camera></a-entity>
-    </a-scene>
+  <script>
+    const status = document.getElementById('status');
+    const switchBtn = document.getElementById('switchBtn');
+    const cameraBtn = document.getElementById('cameraBtn');
 
-    <script>
-      const status = document.getElementById('status');
-      const switchBtn = document.getElementById('switchBtn');
+    const models = [
+      "https://nippooo.github.io/webar-snowman/assets/models/Fox.glb",
+      "https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb",
+      "https://nippooo.github.io/webar-snowman/assets/models/Bear.glb"
+    ];
+    let currentIndex = 0;
 
-      const models = [
-        "https://nippooo.github.io/webar-snowman/assets/models/Fox.glb",
-        "https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb",
-        "https://nippooo.github.io/webar-snowman/assets/models/Bear.glb"
-      ];
-      let currentIndex = 0;
+    function setupMarker(markerId, modelId, markerName) {
+      const marker = document.getElementById(markerId);
+      const modelEntity = document.getElementById(modelId);
 
-      function setupMarker(markerId, modelId, markerName) {
-        const marker = document.getElementById(markerId);
-        const modelEntity = document.getElementById(modelId);
+      marker.addEventListener('markerFound', () => {
+        status.textContent = `${markerName} виден`;
+        modelEntity.setAttribute('visible', true);
+      });
 
-        marker.addEventListener('markerFound', () => {
-          console.log(`[AR.js] ${markerName} виден`);
-          status.textContent = `${markerName} виден`;
-          modelEntity.setAttribute('visible', true);
-        });
+      marker.addEventListener('markerLost', () => {
+        status.textContent = `${markerName} не виден`;
+      });
 
-        marker.addEventListener('markerLost', () => {
-          console.log(`[AR.js] ${markerName} не виден`);
-          status.textContent = `${markerName} не виден`;
-          // модель остаётся видимой
-        });
+      switchBtn.addEventListener('click', () => {
+        currentIndex = (currentIndex + 1) % models.length;
+        modelEntity.setAttribute('gltf-model', models[currentIndex]);
+      });
+    }
 
-        switchBtn.addEventListener('click', () => {
-          currentIndex = (currentIndex + 1) % models.length;
-          modelEntity.setAttribute('gltf-model', models[currentIndex]);
-          console.log(`${markerName}: модель переключена на`, models[currentIndex]);
-        });
-      }
+    setupMarker('snowman', 'model-snowman', 'Снеговик');
+    setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
+    setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
 
-      setupMarker('snowman', 'model-snowman', 'Снеговик');
-      setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
-      setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
-    </script>
-  </body>
+    // Переключение камеры
+    let currentCamIndex = 0;
+    cameraBtn.addEventListener('click', () => {
+      navigator.mediaDevices.enumerateDevices().then(devices => {
+        const videoDevices = devices.filter(d => d.kind === "videoinput");
+        if (videoDevices.length > 0) {
+          currentCamIndex = (currentCamIndex + 1) % videoDevices.length;
+          const constraints = { video: { deviceId: { exact: videoDevices[currentCamIndex].deviceId } } };
+
+          navigator.mediaDevices.getUserMedia(constraints)
+            .then(stream => {
+              const video = document.querySelector("video");
+              if (video) video.srcObject = stream;
+              alert("Камера переключена: " + videoDevices[currentCamIndex].label);
+            })
+            .catch(err => {
+              alert("Ошибка камеры: " + err.name + "\n" + err.message);
+            });
+        }
+      });
+    });
+  </script>
+</body>
 </html>
