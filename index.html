@@ -21,8 +21,9 @@
       border-radius: 6px;
       font-size: 14px;
     }
-    #switchBtn, #cameraBtn {
+    #switchBtn {
       position: absolute;
+      top: 50px;
       right: 10px;
       padding: 8px 12px;
       background: rgba(0,0,0,0.6);
@@ -31,19 +32,13 @@
       font-size: 14px;
       cursor: pointer;
     }
-    #switchBtn { top: 50px; }
-    #cameraBtn { top: 90px; }
   </style>
 </head>
 <body style="margin:0; overflow:hidden;">
-  <div class="arjs-loader">
-    <div>Загрузка маркеров, подождите…</div>
-  </div>
+  <div class="arjs-loader"><div>Загрузка маркеров, подождите…</div></div>
 
-  <!-- Индикатор состояния -->
   <div id="status">Маркер не виден</div>
   <button id="switchBtn">Сменить модель</button>
-  <button id="cameraBtn">Сменить камеру</button>
 
   <a-scene
     vr-mode-ui="enabled: false;"
@@ -51,7 +46,6 @@
     embedded
     arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; debugUIEnabled: false;"
   >
-    <!-- Маркеры -->
     <a-nft id="snowman" type="nft"
       url="https://nippooo.github.io/webar-snowman/assets/markers/snowman/snowman"
       emitevents="true">
@@ -82,7 +76,6 @@
   <script>
     const status = document.getElementById('status');
     const switchBtn = document.getElementById('switchBtn');
-    const cameraBtn = document.getElementById('cameraBtn');
 
     const models = [
       "https://nippooo.github.io/webar-snowman/assets/models/Fox.glb",
@@ -114,32 +107,37 @@
     setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
     setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
 
-    // Переключение камеры внутри AR.js
-    let currentCamIndex = 0;
-    cameraBtn.addEventListener('click', () => {
-      navigator.mediaDevices.enumerateDevices().then(devices => {
-        const videoDevices = devices.filter(d => d.kind === "videoinput");
-        if (videoDevices.length > 0) {
-          currentCamIndex = (currentCamIndex + 1) % videoDevices.length;
-          const constraints = { video: { deviceId: { exact: videoDevices[currentCamIndex].deviceId } } };
+    // 🔧 Подмена потока камеры с явными constraints
+    window.addEventListener('load', async () => {
+      try {
+        const constraints = {
+          video: {
+            facingMode: { exact: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            aspectRatio: { ideal: 1.777 } // 16:9
+          }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const sceneEl = document.querySelector('a-scene');
+        const arSource = sceneEl.systems.arjs.arSource;
 
-          const sceneEl = document.querySelector('a-scene');
-          const arSource = sceneEl.systems.arjs.arSource;
-
-          // Остановить текущую камеру
-          arSource.stop();
-
-          // Инициализировать новую камеру
-          arSource.initSource(constraints);
-          arSource.ready = true;
-
-          // Обновить размеры
-          arSource.onResizeElement();
-          arSource.copyElementSizeTo(sceneEl.canvas);
-
-          alert("Камера переключена: " + videoDevices[currentCamIndex].label);
+        // Остановить старый поток
+        const prevStream = arSource?.domElement?.srcObject;
+        if (prevStream && prevStream.getTracks) {
+          prevStream.getTracks().forEach(t => t.stop());
         }
-      });
+
+        // Подменить на новый поток
+        arSource.domElement.srcObject = stream;
+        arSource.ready = true;
+        arSource.onResizeElement();
+        arSource.copyElementSizeTo(sceneEl.canvas);
+
+        console.log("✅ Камера запущена без зума");
+      } catch (err) {
+        status.textContent = `Ошибка камеры: ${err.name}`;
+      }
     });
   </script>
 </body>
