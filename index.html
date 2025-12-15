@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 21</title>
+<title>WebAR — 22</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -16,43 +16,32 @@
 html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
 #start { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#000; z-index:100; }
 #start button { padding:14px 22px; font-size:16px; border-radius:10px; border:none; }
-#ui { position:fixed; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:8px; z-index:101; display:none; }
-#ui button { background: rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.3); padding:8px 12px; border-radius:6px; font-size:14px; }
 #status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background: rgba(0,0,0,0.65); color:#fff; padding:8px 12px; border-radius:6px; font-size:14px; z-index:101; display:none; }
-video#cameraVideo { position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; background:transparent; }
 a-scene { position:fixed !important; top:0; left:0; width:100vw !important; height:100vh !important; background:transparent !important; z-index:1; }
+video { position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; }
 </style>
 </head>
 <body>
 
-<!-- Video fallback -->
-<video id="cameraVideo" autoplay muted playsinline></video>
-
-<!-- Start screen -->
+<!-- Стартовый экран -->
 <div id="start">
   <button id="startBtn">Запустить AR</button>
 </div>
 
-<!-- UI -->
-<div id="ui">
-  <button id="btnCamera">Сменить камеру</button>
-</div>
-
 <div id="status">Наведи камеру на маркер</div>
 
-<!-- AR Scene -->
+<!-- AR Сцена -->
 <a-scene
   id="scene"
-  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart: false"
+  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false"
   vr-mode-ui="enabled:false"
   renderer="alpha:true"
 >
   <a-camera look-controls="enabled:false"></a-camera>
 
-  <!-- Target -->
+  <!-- Target с кубом -->
   <a-entity id="target" mindar-image-target="targetIndex:0">
-    <!-- Куб вместо glTF -->
-    <a-box id="cube" visible="true" position="0 0 0" depth="0.3" height="0.3" width="0.3" color="#ff6600"></a-box>
+    <a-box position="0 0 0" depth="0.2" height="0.2" width="0.2" color="#ff0000" visible="true"></a-box>
   </a-entity>
 </a-scene>
 
@@ -60,49 +49,43 @@ a-scene { position:fixed !important; top:0; left:0; width:100vw !important; heig
 (() => {
   const startBtn = document.getElementById('startBtn');
   const startScreen = document.getElementById('start');
-  const ui = document.getElementById('ui');
   const status = document.getElementById('status');
-  const btnCamera = document.getElementById('btnCamera');
-
-  const videoEl = document.getElementById('cameraVideo');
   const scene = document.getElementById('scene');
   const target = document.getElementById('target');
 
   let facingMode = 'environment';
 
-  function startAR(facing) {
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } })
-      .then(stream => {
-        videoEl.srcObject = stream;
-        videoEl.play().catch(()=>{});
-        startScreen.style.display = 'none';
-        ui.style.display = 'flex';
-        status.style.display = 'block';
+  async function startAR() {
+    // Включаем камеру в рамках user gesture
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+      let videoEl = document.querySelector('video');
+      videoEl.srcObject = stream;
+      
+      const playPromise = videoEl.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          console.log("Видео не стартовало автоматически, но камера активна");
+        });
+      }
 
-        const mindarSystem = scene.systems['mindar-image-system'];
-        if(mindarSystem) {
-          mindarSystem.start({ facingMode: facing }).catch(e=>{
-            console.error("MindAR не запущен", e);
-          });
-        }
-      })
-      .catch(err => {
-        alert("Камера недоступна");
-        console.error(err);
-      });
+      startScreen.style.display = 'none';
+      status.style.display = 'block';
+
+      const mindarSystem = scene.systems['mindar-image-system'];
+      if(mindarSystem) await mindarSystem.start({ facingMode });
+
+    } catch(err) {
+      alert("Камера недоступна или отказано в доступе");
+      console.error(err);
+    }
   }
 
-  startBtn.addEventListener('click', () => startAR(facingMode));
-
-  btnCamera.addEventListener('click', () => {
-    facingMode = facingMode==='environment' ? 'user' : 'environment';
-    const mindarSystem = scene.systems['mindar-image-system'];
-    if(mindarSystem) mindarSystem.stop();
-    startAR(facingMode);
-  });
+  startBtn.addEventListener('click', startAR);
 
   target.addEventListener('targetFound', () => status.textContent='Маркер найден');
   target.addEventListener('targetLost', () => status.textContent='Наведи камеру на маркер');
+
 })();
 </script>
 
