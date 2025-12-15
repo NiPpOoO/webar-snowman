@@ -1,49 +1,148 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <title>WebAR 1</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<meta charset="utf-8">
+<title>WebAR Snowman — Stable Universal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+<!-- A-Frame (СТАБИЛЬНО) -->
+<script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
 
-  <!-- MindAR -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+<!-- MindAR (СТАБИЛЬНО) -->
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
-  <style>
-    body { margin:0; overflow:hidden; }
-    #status {
-      position:absolute;
-      top:10px;
-      left:50%;
-      transform:translateX(-50%);
-      background:rgba(0,0,0,.65);
-      color:#fff;
-      padding:8px 12px;
-      border-radius:6px;
-      font-size:14px;
-    }
-  </style>
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+  font-family: system-ui, sans-serif;
+}
+
+#ui {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+button {
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+#status {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+</style>
 </head>
+
 <body>
 
-<div id="status">Наведи камеру на снеговика</div>
+<div id="ui">
+  <button id="switchCamera">Сменить камеру</button>
+  <button id="switchModel">Сменить модель</button>
+</div>
+
+<div id="status">Наведи камеру на маркер</div>
 
 <a-scene
-  mindar-image="imageTargetSrc: assets/targets/snowman.mind"
+  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind"
   embedded
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: true"
   renderer="colorManagement: true"
 >
-  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <a-entity mindar-image-target="targetIndex: 0">
-    <a-box position="-0.4 0 0" scale="0.3 0.3 0.3" color="#ff6600"></a-box>
-    <a-sphere position="0.4 0 0" scale="0.25 0.25 0.25" color="#ffffff"></a-sphere>
+  <a-camera
+    id="camera"
+    position="0 0 0"
+    look-controls="enabled: false"
+  ></a-camera>
+
+  <!-- TARGET -->
+  <a-entity
+    id="marker"
+    mindar-image-target="targetIndex: 0"
+  >
+
+    <!-- MODEL 1 -->
+    <a-entity id="model1" visible="true">
+      <a-sphere position="0 0.2 0" radius="0.15" color="#ffffff"></a-sphere>
+      <a-sphere position="0 -0.1 0" radius="0.2" color="#ffffff"></a-sphere>
+    </a-entity>
+
+    <!-- MODEL 2 -->
+    <a-entity id="model2" visible="false">
+      <a-box position="0 0 0" depth="0.3" height="0.3" width="0.3" color="#ff6600"></a-box>
+    </a-entity>
+
   </a-entity>
+
 </a-scene>
+
+<script>
+(() => {
+
+  const status = document.getElementById('status');
+  const switchCameraBtn = document.getElementById('switchCamera');
+  const switchModelBtn = document.getElementById('switchModel');
+
+  const model1 = document.getElementById('model1');
+  const model2 = document.getElementById('model2');
+
+  let currentModel = 1;
+  let currentFacing = 'environment';
+
+  // ===== MODEL SWITCH =====
+  switchModelBtn.addEventListener('click', () => {
+    currentModel = currentModel === 1 ? 2 : 1;
+    model1.setAttribute('visible', currentModel === 1);
+    model2.setAttribute('visible', currentModel === 2);
+  });
+
+  // ===== CAMERA SWITCH =====
+  switchCameraBtn.addEventListener('click', async () => {
+    const sceneEl = document.querySelector('a-scene');
+    const mindarSystem = sceneEl.systems['mindar-image-system'];
+
+    if (!mindarSystem) return;
+
+    currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
+
+    await mindarSystem.stop();
+    await mindarSystem.start({ facingMode: currentFacing });
+  });
+
+  // ===== TARGET EVENTS =====
+  const marker = document.getElementById('marker');
+
+  marker.addEventListener('targetFound', () => {
+    status.textContent = 'Маркер найден';
+  });
+
+  marker.addEventListener('targetLost', () => {
+    status.textContent = 'Маркер потерян';
+  });
+
+})();
+</script>
 
 </body>
 </html>
