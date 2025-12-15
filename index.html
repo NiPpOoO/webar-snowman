@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 77</title>
+<title>WebAR — 78</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -91,7 +91,7 @@ startBtn.addEventListener('click', () => {
   model.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   model.setAttribute('scale', '0.3 0.3 0.3');
   model.setAttribute('position', '-0.3 -0.3 0');
-  // ✅ Зацикленная анимация
+  // Зацикленная анимация через animation-mixer
   model.setAttribute('animation-mixer', 'clip: *; loop: repeat; timeScale: 1');
 
   target.appendChild(model);
