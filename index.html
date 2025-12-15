@@ -1,65 +1,58 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<title>WebAR — Mobile Safe</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta charset="utf-8">
+  <title>WebAR — Final Stable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
 
-<style>
-html, body { margin:0; padding:0; overflow:hidden; background:#000; }
-#start {
-  position:fixed;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#000;
-  z-index:100;
-}
-button {
-  padding:14px 20px;
-  font-size:16px;
-  border-radius:8px;
-}
-</style>
+  <!-- MindAR CORE -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
+
+  <!-- MindAR A-Frame adapter -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<!-- START SCREEN -->
+<!-- START -->
 <div id="start">
   <button id="startBtn">Запустить AR</button>
 </div>
 
+<!-- UI -->
+<div id="ui" style="display:none">
+  <button id="btnCamera">Сменить камеру</button>
+  <button id="btnModel">Сменить модель</button>
+</div>
+
+<div id="status" style="display:none">Наведи камеру на маркер</div>
+
 <a-scene
   id="scene"
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart: false"
-  embedded
   vr-mode-ui="enabled:false"
 >
   <a-camera look-controls="enabled:false"></a-camera>
 
-  <a-entity mindar-image-target="targetIndex:0">
-    <a-box position="0 0 0" scale="0.3 0.3 0.3" color="orange"></a-box>
+  <a-entity id="target" mindar-image-target="targetIndex:0">
+    <a-entity id="model1" visible="true">
+      <a-sphere position="0 0.15 0" radius="0.15" color="#fff"></a-sphere>
+      <a-sphere position="0 -0.1 0" radius="0.22" color="#fff"></a-sphere>
+    </a-entity>
+
+    <a-entity id="model2" visible="false">
+      <a-box width="0.3" height="0.3" depth="0.3" color="#ff6600"></a-box>
+    </a-entity>
   </a-entity>
 </a-scene>
 
-<script>
-const startBtn = document.getElementById('startBtn');
-const startScreen = document.getElementById('start');
-const scene = document.querySelector('a-scene');
-
-startBtn.addEventListener('click', async () => {
-  startScreen.style.display = 'none';
-
-  const mindarSystem = scene.systems['mindar-image-system'];
-  await mindarSystem.start();
-});
-</script>
-
+<!-- JS (ПОСЛЕ HTML!) -->
+<script src="script.js"></script>
 </body>
 </html>
