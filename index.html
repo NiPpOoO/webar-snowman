@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 6Final Stable</title>
+<title>WebAR — 7Final Stable</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -31,7 +31,7 @@ a-scene {
   height: 100vh !important;
 }
 
-video, canvas {
+canvas {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -89,6 +89,16 @@ video, canvas {
   font-size: 14px;
   z-index: 20;
 }
+video {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  object-fit: cover !important;
+  z-index: 1; /* чтобы быть под UI */
+}
+
 </style>
 </head>
 
@@ -112,6 +122,8 @@ video, canvas {
   id="scene"
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart: false"
   vr-mode-ui="enabled:false"
+  renderer="alpha: true"
+  background="color: transparent"
 >
 
 
