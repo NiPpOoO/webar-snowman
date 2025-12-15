@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 18</title>
+<title>WebAR — 19</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -52,13 +52,24 @@
 
   <!-- Target -->
   <a-entity id="target" mindar-image-target="targetIndex:0">
-    <!-- Model 1 -->
+    <!-- Model 1: простые сферы -->
     <a-entity id="model1" visible="true">
       <a-sphere position="0 0.15 0" radius="0.15" color="#ffffff"></a-sphere>
       <a-sphere position="0 -0.1 0" radius="0.22" color="#ffffff"></a-sphere>
     </a-entity>
-    <!-- Model 2 (анимируемый glTF) -->
-    <a-entity id="model2" visible="false" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb" scale="0.3 0.3 0.3"></a-entity>
+
+    <!-- Model 2: анимированный куб -->
+    <a-entity id="model2" visible="false" position="0 0 0">
+      <a-box 
+        position="0 0 0" 
+        depth="0.3" 
+        height="0.3" 
+        width="0.3" 
+        color="#ff6600"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"
+        animation__bounce="property: position; dir: alternate; dur: 1000; loop: true; to: 0 0.2 0"
+      ></a-box>
+    </a-entity>
   </a-entity>
 </a-scene>
 
@@ -101,10 +112,10 @@
     ui.style.display = 'flex';
     status.style.display = 'block';
 
-    // Проверяем поддержку MindAR
-    if(scene.systems['mindar-image-system']) {
+    const mindarSystem = scene.systems['mindar-image-system'];
+    if(mindarSystem) {
       try {
-        await scene.systems['mindar-image-system'].start({ facingMode: facing });
+        await mindarSystem.start({ facingMode: facing });
       } catch(e) {
         console.error("MindAR не запущен", e);
       }
