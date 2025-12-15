@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <title>WebAR: Снеговик + Лиса</title>
+    <title>WebAR: Снеговик + Модели</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <!-- A-Frame -->
@@ -21,6 +21,17 @@
         border-radius: 6px;
         font-size: 14px;
       }
+      #switchBtn {
+        position: absolute;
+        top: 50px;
+        right: 10px;
+        padding: 8px 12px;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body style="margin:0; overflow:hidden;">
@@ -31,6 +42,8 @@
 
     <!-- Индикатор состояния -->
     <div id="status">Снеговик не виден</div>
+    <!-- Кнопка переключения -->
+    <button id="switchBtn">Сменить модель</button>
 
     <a-scene
       vr-mode-ui="enabled: false;"
@@ -49,12 +62,13 @@
         smoothTolerance=".01"
         smoothThreshold="5"
       >
-        <!-- Fox.glb модель -->
+        <!-- Модель (по умолчанию Лиса) -->
         <a-entity
-          id="fox"
+          id="modelEntity"
           gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
           scale="0.3 0.3 0.3"
           position="0 0 0"
+          visible="false"
         ></a-entity>
       </a-nft>
 
@@ -65,15 +79,35 @@
     <script>
       const marker = document.getElementById('snowman-marker');
       const status = document.getElementById('status');
+      const switchBtn = document.getElementById('switchBtn');
+      const modelEntity = document.getElementById('modelEntity');
 
+      // Список моделей
+      const models = [
+        "https://nippooo.github.io/webar-snowman/assets/models/Fox.glb",
+        "https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb",
+        "https://nippooo.github.io/webar-snowman/assets/models/Bear.glb"
+      ];
+      let currentIndex = 0;
+
+      // События маркера
       marker.addEventListener('markerFound', () => {
         console.log("[AR.js] Снеговик виден");
         status.textContent = "Снеговик виден";
+        modelEntity.setAttribute('visible', true);
       });
 
       marker.addEventListener('markerLost', () => {
         console.log("[AR.js] Снеговик не виден");
         status.textContent = "Снеговик не виден";
+        // модель остаётся видимой
+      });
+
+      // Переключение модели
+      switchBtn.addEventListener('click', () => {
+        currentIndex = (currentIndex + 1) % models.length;
+        modelEntity.setAttribute('gltf-model', models[currentIndex]);
+        console.log("Модель переключена на:", models[currentIndex]);
       });
     </script>
   </body>
