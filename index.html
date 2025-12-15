@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 44</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>WebAR — 45</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- A-Frame стабильная версия для iOS -->
+<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
 <!-- MindAR -->
@@ -13,14 +13,14 @@
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden;}
-#start { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10; background:#000;}
-#start button { padding:16px 26px; font-size:16px; border-radius:10px; border:none; cursor:pointer; }
-#status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.65); color:#fff; padding:8px 12px; border-radius:6px; font-size:14px; z-index:11; display:none; }
-a-scene { position:fixed !important; inset:0; background:transparent !important; }
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;}
+#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;z-index:10;}
+#start button{padding:16px 26px;font-size:16px;border-radius:10px;border:none;}
+#status{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);color:#fff;padding:8px 12px;border-radius:6px;font-size:14px;z-index:11;display:none;}
+a-scene{position:fixed !important;inset:0;background:transparent !important;}
+video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;}
 </style>
 </head>
-
 <body>
 
 <div id="start">
@@ -33,12 +33,11 @@ a-scene { position:fixed !important; inset:0; background:transparent !important;
   id="scene"
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false"
   vr-mode-ui="enabled:false"
-  embedded
 >
   <a-camera look-controls="enabled:false"></a-camera>
 
-  <!-- Target с тестовым кубом -->
   <a-entity id="target" mindar-image-target="targetIndex:0">
+    <!-- Тестовый куб -->
     <a-box position="0 0 0" width="0.25" height="0.25" depth="0.25" color="#ff0000"></a-box>
   </a-entity>
 </a-scene>
@@ -50,26 +49,50 @@ const status = document.getElementById('status');
 const scene = document.getElementById('scene');
 const target = document.getElementById('target');
 
-startBtn.addEventListener('click', async () => {
+startBtn.addEventListener('click', () => {
   startBtn.disabled = true;
-  startScreen.style.display = 'none';
-  status.style.display = 'block';
 
-  const mindarSystem = scene.systems['mindar-image-system'];
+  // ⚠️ Safari: прямой жест пользователя
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(stream => {
+      // Создаем video элемент для фоновой камеры
+      let video = document.createElement('video');
+      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.srcObject = stream;
+      video.style.position = 'fixed';
+      video.style.top = '0';
+      video.style.left = '0';
+      video.style.width = '100vw';
+      video.style.height = '100vh';
+      video.style.objectFit = 'cover';
+      video.style.zIndex = '0';
+      document.body.appendChild(video);
 
-  try {
-    // iOS Safari требует user gesture и иногда setTimeout
-    setTimeout(async () => {
-      await mindarSystem.start();
-      console.log('MindAR запущен');
-    }, 0);
-  } catch (e) {
-    alert('Ошибка запуска камеры. Если Safari, нажмите ещё раз.');
-    console.error(e);
-  }
+      // Скрываем стартовый экран
+      startScreen.style.display = 'none';
+      status.style.display = 'block';
+
+      // Запускаем MindAR
+      const mindarSystem = scene.systems['mindar-image-system'];
+      if(mindarSystem){
+        mindarSystem.start().then(() => {
+          console.log('MindAR запущен');
+        }).catch(err => {
+          alert('Ошибка запуска MindAR. Обновите страницу и попробуйте снова.');
+          console.error(err);
+        });
+      }
+    })
+    .catch(err => {
+      alert('Камера недоступна или отказано в доступе');
+      console.error(err);
+      startBtn.disabled = false;
+    });
 });
 
-// Обратная связь при нахождении/потере маркера
+// UI feedback
 target.addEventListener('targetFound', () => status.textContent = 'Маркер найден');
 target.addEventListener('targetLost', () => status.textContent = 'Наведи камеру на маркер');
 </script>
