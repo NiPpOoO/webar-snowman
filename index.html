@@ -114,7 +114,7 @@
     setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
     setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
 
-    // Переключение камеры
+    // Переключение камеры внутри AR.js
     let currentCamIndex = 0;
     cameraBtn.addEventListener('click', () => {
       navigator.mediaDevices.enumerateDevices().then(devices => {
@@ -123,15 +123,21 @@
           currentCamIndex = (currentCamIndex + 1) % videoDevices.length;
           const constraints = { video: { deviceId: { exact: videoDevices[currentCamIndex].deviceId } } };
 
-          navigator.mediaDevices.getUserMedia(constraints)
-            .then(stream => {
-              const video = document.querySelector("video");
-              if (video) video.srcObject = stream;
-              alert("Камера переключена: " + videoDevices[currentCamIndex].label);
-            })
-            .catch(err => {
-              alert("Ошибка камеры: " + err.name + "\n" + err.message);
-            });
+          const sceneEl = document.querySelector('a-scene');
+          const arSource = sceneEl.systems.arjs.arSource;
+
+          // Остановить текущую камеру
+          arSource.stop();
+
+          // Инициализировать новую камеру
+          arSource.initSource(constraints);
+          arSource.ready = true;
+
+          // Обновить размеры
+          arSource.onResizeElement();
+          arSource.copyElementSizeTo(sceneEl.canvas);
+
+          alert("Камера переключена: " + videoDevices[currentCamIndex].label);
         }
       });
     });
