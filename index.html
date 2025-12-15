@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>WebAR Snowman — Universal</title>
+  <title>WebAR Snowman — Universal Fixed</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 
   <!-- A-Frame -->
@@ -38,7 +38,7 @@
   embedded
   vr-mode-ui="enabled: false"
   renderer="antialias: true;"
-  arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
+  arjs="sourceType: webcam; facingMode: environment; trackingMethod: best; debugUIEnabled: false;"
 >
   <!-- MARKERS -->
   <a-nft id="marker0" type="nft"
@@ -46,7 +46,7 @@
     emitevents="true">
     <a-entity class="model"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-      scale="1 1 1" position="0 0 0" visible="false"></a-entity>
+      scale="0.5 0.5 0.5" position="0 0 0" visible="false" animation-mixer></a-entity>
   </a-nft>
 
   <a-nft id="marker1" type="nft"
@@ -54,7 +54,7 @@
     emitevents="true">
     <a-entity class="model"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-      scale="1 1 1" position="0 0 0" visible="false"></a-entity>
+      scale="0.5 0.5 0.5" position="0 0 0" visible="false" animation-mixer></a-entity>
   </a-nft>
 
   <a-nft id="marker2" type="nft"
@@ -62,7 +62,7 @@
     emitevents="true">
     <a-entity class="model"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb"
-      scale="1 1 1" position="0 0 0" visible="false"></a-entity>
+      scale="0.5 0.5 0.5" position="0 0 0" visible="false" animation-mixer></a-entity>
   </a-nft>
 
   <!-- CAMERA -->
@@ -107,17 +107,16 @@ switchBtn.addEventListener('click', () => {
   });
 });
 
-// Переключение камеры (универсально)
+// Переключение камеры (fallback для Samsung)
 cameraBtn.addEventListener('click', async () => {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoInputs = devices.filter(d => d.kind === 'videoinput');
     if (videoInputs.length > 1) {
-      const currentStream = document.querySelector('video');
-      if (currentStream) currentStream.srcObject.getTracks().forEach(t => t.stop());
       const nextDevice = videoInputs[(Math.floor(Math.random()*videoInputs.length))];
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: nextDevice.deviceId } });
-      document.querySelector('video').srcObject = stream;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: nextDevice.deviceId } } });
+      const videoEl = document.querySelector('video');
+      if (videoEl) videoEl.srcObject = stream;
       status.textContent = '📷 Камера переключена';
     }
   } catch (e) {
