@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 26</title>
+<title>WebAR — 27</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
@@ -34,7 +34,8 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
   <a-camera look-controls="enabled:false"></a-camera>
 
   <a-entity id="target" mindar-image-target="targetIndex:0">
-    <a-box position="0 0 0" depth="0.2" height="0.2" width="0.2" color="#ff0000" visible="true"></a-box>
+    <!-- Placeholder куб для AR -->
+    <a-box position="0 0 0" depth="0.2" height="0.2" width="0.2" color="#00ff00" visible="true"></a-box>
   </a-entity>
 </a-scene>
 
@@ -71,7 +72,6 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
       startScreen.style.display='none';
       status.style.display='block';
 
-      // Старт MindAR напрямую (waitForTargetLoad недоступен в 1.1.4)
       const mindarSystem = scene.systems['mindar-image-system'];
       if(mindarSystem){
         await mindarSystem.start({ facingMode:'environment' });
