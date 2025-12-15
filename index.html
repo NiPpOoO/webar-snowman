@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 10</title>
+<title>WebAR — Stable</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -33,7 +33,7 @@ a-scene {
   background: transparent !important;
 }
 
-video, canvas {
+canvas, video {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -71,6 +71,7 @@ video, canvas {
   display: flex;
   gap: 8px;
   z-index: 20;
+  display: none;
 }
 
 #ui button {
@@ -93,10 +94,10 @@ video, canvas {
   border-radius: 6px;
   font-size: 14px;
   z-index: 20;
+  display: none;
 }
 </style>
 </head>
-
 <body>
 
 <!-- START -->
@@ -105,12 +106,12 @@ video, canvas {
 </div>
 
 <!-- UI -->
-<div id="ui" style="display:none">
+<div id="ui">
   <button id="btnCamera">Сменить камеру</button>
   <button id="btnModel">Сменить модель</button>
 </div>
 
-<div id="status" style="display:none">Наведи камеру на маркер</div>
+<div id="status">Наведи камеру на маркер</div>
 
 <!-- SCENE -->
 <a-scene
@@ -155,51 +156,59 @@ video, canvas {
   let facingMode = 'environment';
   let currentModel = 1;
 
-  // START AR
-  async function startAR(facing) {
-    startScreen.style.display = 'none';
-    ui.style.display = 'flex';
-    status.style.display = 'block';
+  // Ждём полной загрузки сцены
+  scene.addEventListener('loaded', () => {
 
-    const mindarSystem = scene.systems['mindar-image-system'];
-    await mindarSystem.start({ facingMode: facing });
+    async function startAR(facing) {
+      startScreen.style.display = 'none';
+      ui.style.display = 'flex';
+      status.style.display = 'block';
 
-    // Видео камеры на весь экран через небольшой timeout
-    setTimeout(() => {
+      const mindarSystem = scene.systems['mindar-image-system'];
+      try {
+        await mindarSystem.start({ facingMode: facing });
+      } catch(e){
+        console.error("Ошибка запуска камеры:", e);
+        alert("Не удалось получить доступ к камере");
+        return;
+      }
+
+      // Видео на весь экран
       const videoEl = document.querySelector('video');
       if(videoEl){
         videoEl.style.width = '100vw';
         videoEl.style.height = '100vh';
         videoEl.style.objectFit = 'cover';
       }
-    }, 500);
-  }
+    }
 
-  startBtn.addEventListener('click', () => startAR('environment'));
+    startBtn.addEventListener('click', () => startAR('environment'));
 
-  // CAMERA SWITCH
-  btnCamera.addEventListener('click', async () => {
-    facingMode = facingMode === 'environment' ? 'user' : 'environment';
-    const mindarSystem = scene.systems['mindar-image-system'];
-    await mindarSystem.stop();
-    await startAR(facingMode);
-  });
+    // CAMERA SWITCH
+    btnCamera.addEventListener('click', async () => {
+      facingMode = facingMode === 'environment' ? 'user' : 'environment';
+      const mindarSystem = scene.systems['mindar-image-system'];
+      await mindarSystem.stop();
+      await startAR(facingMode);
+    });
 
-  // MODEL SWITCH
-  btnModel.addEventListener('click', () => {
-    currentModel = currentModel === 1 ? 2 : 1;
-    model1.setAttribute('visible', currentModel === 1);
-    model2.setAttribute('visible', currentModel === 2);
-  });
+    // MODEL SWITCH
+    btnModel.addEventListener('click', () => {
+      currentModel = currentModel === 1 ? 2 : 1;
+      model1.setAttribute('visible', currentModel === 1);
+      model2.setAttribute('visible', currentModel === 2);
+    });
 
-  // TARGET EVENTS
-  target.addEventListener('targetFound', () => {
-    status.textContent = 'Маркер найден';
-  });
+    // TARGET EVENTS
+    target.addEventListener('targetFound', () => {
+      status.textContent = 'Маркер найден';
+    });
 
-  target.addEventListener('targetLost', () => {
-    status.textContent = 'Наведи камеру на маркер';
-  });
+    target.addEventListener('targetLost', () => {
+      status.textContent = 'Наведи камеру на маркер';
+    });
+
+  }); // scene loaded
 })();
 </script>
 
