@@ -2,13 +2,12 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>WebAR: Несколько маркеров снеговика</title>
+  <title>WebAR: Снеговик с анимацией</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- A-Frame 1.6.0 -->
-  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
-  <!-- AR.js (NFT) -->
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+  <!-- Стабильная связка -->
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.3.2/aframe/build/aframe-ar-nft.js"></script>
 
   <style>
     #status {
@@ -22,7 +21,6 @@
       color: #fff; border-radius: 6px; font-size: 14px; cursor: pointer; z-index: 3;
     }
 
-    /* Анти‑зум: вписываем видео без кропа, не трогаем поток */
     .arjs-video, video[playsinline] {
       position: fixed; left: 0; top: 0;
       width: 100vw; height: 100vh;
@@ -57,48 +55,23 @@
     embedded
     arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; debugUIEnabled: false;"
   >
-    <!-- Предзагрузка моделей (CORS безопасно) -->
     <a-assets timeout="30000">
-      <a-asset-item id="mdl-fox" src="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb" crossorigin="anonymous"></a-asset-item>
-      <a-asset-item id="mdl-penguin" src="https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb" crossorigin="anonymous"></a-asset-item>
-      <a-asset-item id="mdl-bear" src="https://nippooo.github.io/webar-snowman/assets/models/Bear.glb" crossorigin="anonymous"></a-asset-item>
+      <a-asset-item id="mdl-fox" src="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"></a-asset-item>
+      <a-asset-item id="mdl-penguin" src="https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb"></a-asset-item>
+      <a-asset-item id="mdl-bear" src="https://nippooo.github.io/webar-snowman/assets/models/Bear.glb"></a-asset-item>
     </a-assets>
 
-    <!-- Маркеры (включены сглаживания для стабильности) -->
+    <!-- Один маркер снеговика -->
     <a-nft id="snowman" type="nft"
       url="https://nippooo.github.io/webar-snowman/assets/markers/snowman/snowman"
-      emitevents="true"
-      smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
+      emitevents="true">
       <a-entity id="model-snowman"
         gltf-model="#mdl-fox"
-        crossorigin="anonymous"
         scale="0.3 0.3 0.3"
         position="0 0 0"
-        visible="false"></a-entity>
-    </a-nft>
-
-    <a-nft id="snowman1" type="nft"
-      url="https://nippooo.github.io/webar-snowman/assets/markers/snowman1/snowman1"
-      emitevents="true"
-      smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-      <a-entity id="model-snowman1"
-        gltf-model="#mdl-fox"
-        crossorigin="anonymous"
-        scale="0.3 0.3 0.3"
-        position="0 0 0"
-        visible="false"></a-entity>
-    </a-nft>
-
-    <a-nft id="snowman2" type="nft"
-      url="https://nippooo.github.io/webar-snowman/assets/markers/snowman2/snowman2"
-      emitevents="true"
-      smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-      <a-entity id="model-snowman2"
-        gltf-model="#mdl-fox"
-        crossorigin="anonymous"
-        scale="0.3 0.3 0.3"
-        position="0 0 0"
-        visible="false"></a-entity>
+        visible="false"
+        animation-mixer>
+      </a-entity>
     </a-nft>
 
     <a-entity camera></a-entity>
@@ -108,51 +81,32 @@
     const status = document.getElementById('status');
     const switchBtn = document.getElementById('switchBtn');
 
-    // Массив id загруженных a-assets (быстрее и надёжнее для смены моделей)
     const modelIds = ['#mdl-fox', '#mdl-penguin', '#mdl-bear'];
     let currentIndex = 0;
 
-    function setupMarker(markerId, modelId, markerName) {
-      const marker = document.getElementById(markerId);
-      const modelEntity = document.getElementById(modelId);
+    const marker = document.getElementById('snowman');
+    const modelEntity = document.getElementById('model-snowman');
 
-      // Логика видимости
-      marker.addEventListener('markerFound', () => {
-        status.textContent = `${markerName} виден`;
-        modelEntity.setAttribute('visible', true);
-      });
+    marker.addEventListener('markerFound', () => {
+      status.textContent = "Снеговик виден";
+      modelEntity.setAttribute('visible', true);
+    });
 
-      marker.addEventListener('markerLost', () => {
-        status.textContent = `${markerName} не виден`;
-        modelEntity.setAttribute('visible', false);
-      });
+    marker.addEventListener('markerLost', () => {
+      status.textContent = "Снеговик не виден";
+      modelEntity.setAttribute('visible', false);
+    });
 
-      // Смена моделей (переключаем на предзагруженные id)
-      switchBtn.addEventListener('click', () => {
-        currentIndex = (currentIndex + 1) % modelIds.length;
-        modelEntity.setAttribute('gltf-model', modelIds[currentIndex]);
-      });
+    switchBtn.addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % modelIds.length;
+      modelEntity.setAttribute('gltf-model', modelIds[currentIndex]);
+    });
 
-      // Диагностика загрузки модели
-      modelEntity.addEventListener('model-loaded', () => {
-        console.log(`[${markerName}] Модель загружена`);
-      });
-      modelEntity.addEventListener('model-error', (e) => {
-        console.error(`[${markerName}] Ошибка модели`, e.detail);
-        status.textContent = `${markerName}: ошибка модели`;
-      });
-    }
-
-    setupMarker('snowman', 'model-snowman', 'Снеговик');
-    setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
-    setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
-
-    // Скрываем лоадер, когда сцена готова
     const sceneEl = document.querySelector('a-scene');
     sceneEl.addEventListener('loaded', () => {
       const loader = document.querySelector('.arjs-loader');
       if (loader) loader.style.display = 'none';
-      console.log('✅ Сцена загружена, ждём маркеры...');
+      console.log('✅ Сцена загружена, ждём маркер...');
     });
   </script>
 </body>
