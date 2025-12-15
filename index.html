@@ -1,45 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <title>WebAR Snowman — Debug</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <title>WebAR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- A-Frame -->
+    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
+    <!-- AR.js с поддержкой NFT -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
     <link rel="stylesheet" href="./src/style.css" />
-    <script src="./src/script.js" defer></script>
-    <script src="./src/debug-canvas.js" defer></script>
   </head>
-  <body style="margin:0;overflow:hidden;">
-    <!-- AR сцена -->
+  <body style="margin:0; overflow:hidden;">
+    <!-- Лоадер -->
+    <div class="arjs-loader">
+      <div>Загрузка маркера, подождите…</div>
+    </div>
+
     <a-scene
+      vr-mode-ui="enabled: false;"
+      renderer="logarithmicDepthBuffer: true; precision: medium;"
       embedded
-      arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: color; patternRatio: 0.5;"
-      vr-mode-ui="enabled: false"
-      renderer="logarithmicDepthBuffer: true;"
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- NFT метка снеговика -->
+      <!-- NFT-маркер снеговика -->
       <a-nft
-        id="nft-snowman"
-        type="nft"
-        url="./assets/markers/snowman/snowman"
-        emitevents="true"
-        minConfidence="0.25"
-      >
-        <a-box id="cube-nft" position="0 0 0" depth="0.5" height="0.5" width="0.5" color="#ff4444"></a-box>
+  id="snowman-marker"
+  type="nft"
+  url="https://nippooo.github.io/WEBAR-SNOWMAN/assets/markers/snowman"
+  smooth="true"
+  smoothCount="10"
+  smoothTolerance=".01"
+  smoothThreshold="5"
+>
+      
+        <!-- Fox.glb модель -->
+        <a-entity
+          gltf-model=https://nippooo.github.io/WEBAR-SNOWMAN/assets/models/Fox.glb
+          scale="0.3 0.3 0.3"
+          position="0 0 0"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 6000"
+        >
+        </a-entity>
       </a-nft>
 
-      <!-- Hiro метка (контроль) -->
-      <a-marker id="marker-hiro" preset="hiro" emitevents="true">
-        <a-box id="cube-hiro" position="0 0.25 0" depth="0.5" height="0.5" width="0.5" color="#4444ff"></a-box>
-      </a-marker>
-
+      <!-- Камера -->
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- UI (вне сцены) -->
-    <div id="ui">Наведи камеру на снеговика</div>
-    <div id="test-status">🔍 Статус: ничего не найдено</div>
-    <button id="shot">📸 Снимок</button>
   </body>
 </html>
