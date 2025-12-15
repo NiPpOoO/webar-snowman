@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 74</title>
+<title>WebAR — 76</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -102,15 +102,19 @@ startBtn.addEventListener('click', () => {
       if (clip) {
         const action = mixer.clipAction(clip);
         action.play();
+        console.log('▶️ Анимация запущена:', clip.name);
         status.textContent = '▶️ Запущена анимация: ' + clip.name;
         // обновляем анимацию каждый кадр
         scene.addEventListener('tick', (ev) => {
           mixer.update(ev.detail.delta / 1000);
+          console.log('tick update, delta:', ev.detail.delta);
         });
       } else {
+        console.log('❌ Клип mixamo.com.003 не найден');
         status.textContent = '❌ Клип mixamo.com.003 не найден';
       }
     } else {
+      console.log('❌ В GLB нет анимаций');
       status.textContent = '❌ В GLB нет анимаций';
     }
   });
