@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 19</title>
+<title>WebAR — 20</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -13,14 +13,14 @@
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
-  #start { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#000; z-index:100; }
-  #start button { padding:14px 22px; font-size:16px; border-radius:10px; border:none; }
-  #ui { position:fixed; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:8px; z-index:101; display:none; }
-  #ui button { background: rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.3); padding:8px 12px; border-radius:6px; font-size:14px; }
-  #status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background: rgba(0,0,0,0.65); color:#fff; padding:8px 12px; border-radius:6px; font-size:14px; z-index:101; display:none; }
-  video#cameraVideo { position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; background:transparent; }
-  a-scene { position:fixed !important; top:0; left:0; width:100vw !important; height:100vh !important; background:transparent !important; z-index:1; }
+html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
+#start { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#000; z-index:100; }
+#start button { padding:14px 22px; font-size:16px; border-radius:10px; border:none; }
+#ui { position:fixed; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:8px; z-index:101; display:none; }
+#ui button { background: rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.3); padding:8px 12px; border-radius:6px; font-size:14px; }
+#status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background: rgba(0,0,0,0.65); color:#fff; padding:8px 12px; border-radius:6px; font-size:14px; z-index:101; display:none; }
+video#cameraVideo { position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; background:transparent; }
+a-scene { position:fixed !important; top:0; left:0; width:100vw !important; height:100vh !important; background:transparent !important; z-index:1; }
 </style>
 </head>
 <body>
@@ -52,29 +52,18 @@
 
   <!-- Target -->
   <a-entity id="target" mindar-image-target="targetIndex:0">
-    <!-- Model 1: простые сферы -->
+    <!-- Model 1 (фигуры) -->
     <a-entity id="model1" visible="true">
       <a-sphere position="0 0.15 0" radius="0.15" color="#ffffff"></a-sphere>
       <a-sphere position="0 -0.1 0" radius="0.22" color="#ffffff"></a-sphere>
     </a-entity>
-
-    <!-- Model 2: анимированный куб -->
-    <a-entity id="model2" visible="false" position="0 0 0">
-      <a-box 
-        position="0 0 0" 
-        depth="0.3" 
-        height="0.3" 
-        width="0.3" 
-        color="#ff6600"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"
-        animation__bounce="property: position; dir: alternate; dur: 1000; loop: true; to: 0 0.2 0"
-      ></a-box>
-    </a-entity>
+    <!-- Model 2 (анимируемый glTF placeholder) -->
+    <a-entity id="model2" visible="false" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb" scale="0.3 0.3 0.3"></a-entity>
   </a-entity>
 </a-scene>
 
 <script>
-(async () => {
+(() => {
   const startBtn = document.getElementById('startBtn');
   const startScreen = document.getElementById('start');
   const ui = document.getElementById('ui');
@@ -91,55 +80,46 @@
   let facingMode = 'environment';
   let currentModel = 1;
 
-  async function initCamera(facing) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
-      videoEl.srcObject = stream;
-      await videoEl.play();
-      console.log("Камера активна");
-      return true;
-    } catch(e) {
-      alert("Камера недоступна");
-      return false;
-    }
-  }
+  function startAR(facing) {
+    // Весь код запуска камеры и MindAR внутри user gesture
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } })
+      .then(stream => {
+        videoEl.srcObject = stream;
+        videoEl.play().catch(()=>{}); // Safari требует play внутри клика
+        startScreen.style.display = 'none';
+        ui.style.display = 'flex';
+        status.style.display = 'block';
 
-  async function startAR(facing) {
-    const camOk = await initCamera(facing);
-    if(!camOk) return;
-
-    startScreen.style.display = 'none';
-    ui.style.display = 'flex';
-    status.style.display = 'block';
-
-    const mindarSystem = scene.systems['mindar-image-system'];
-    if(mindarSystem) {
-      try {
-        await mindarSystem.start({ facingMode: facing });
-      } catch(e) {
-        console.error("MindAR не запущен", e);
-      }
-    }
+        const mindarSystem = scene.systems['mindar-image-system'];
+        if(mindarSystem) {
+          mindarSystem.start({ facingMode: facing }).catch(e=>{
+            console.error("MindAR не запущен", e);
+          });
+        }
+      })
+      .catch(err => {
+        alert("Камера недоступна");
+        console.error(err);
+      });
   }
 
   startBtn.addEventListener('click', () => startAR(facingMode));
 
-  btnCamera.addEventListener('click', async () => {
-    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+  btnCamera.addEventListener('click', () => {
+    facingMode = facingMode==='environment' ? 'user' : 'environment';
     const mindarSystem = scene.systems['mindar-image-system'];
-    if(mindarSystem) await mindarSystem.stop();
-    await startAR(facingMode);
+    if(mindarSystem) mindarSystem.stop();
+    startAR(facingMode);
   });
 
   btnModel.addEventListener('click', () => {
-    currentModel = currentModel === 1 ? 2 : 1;
+    currentModel = currentModel===1 ? 2 : 1;
     model1.setAttribute('visible', currentModel===1);
     model2.setAttribute('visible', currentModel===2);
   });
 
-  target.addEventListener('targetFound', () => status.textContent = 'Маркер найден');
-  target.addEventListener('targetLost', () => status.textContent = 'Наведи камеру на маркер');
-
+  target.addEventListener('targetFound', () => status.textContent='Маркер найден');
+  target.addEventListener('targetLost', () => status.textContent='Наведи камеру на маркер');
 })();
 </script>
 
