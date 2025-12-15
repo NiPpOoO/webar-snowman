@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 54</title>
+<title>WebAR — 55</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -66,26 +66,26 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 
-startBtn.addEventListener('click', async () => {
+startBtn.addEventListener('click', () => {
+  startBtn.disabled = true;
   startScreen.style.display = 'none';
   status.style.display = 'block';
 
   // Создаем <a-scene> динамически
   const scene = document.createElement('a-scene');
-  scene.setAttribute('mindar-image', 'imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false');
+  scene.setAttribute('mindar-image', 'imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;');
   scene.setAttribute('vr-mode-ui', 'enabled:false');
   scene.setAttribute('renderer', 'alpha:true');
+  document.body.appendChild(scene);
 
   // Камера
   const camera = document.createElement('a-camera');
   camera.setAttribute('look-controls', 'enabled:false');
   scene.appendChild(camera);
 
-  // Target
+  // Target и тестовый куб
   const target = document.createElement('a-entity');
   target.setAttribute('mindar-image-target', 'targetIndex:0');
-
-  // Куб для теста
   const box = document.createElement('a-box');
   box.setAttribute('position', '0 0 0');
   box.setAttribute('width', '0.25');
@@ -93,28 +93,26 @@ startBtn.addEventListener('click', async () => {
   box.setAttribute('depth', '0.25');
   box.setAttribute('color', '#ff0000');
   target.appendChild(box);
-
   scene.appendChild(target);
-  document.body.appendChild(scene);
 
-  // Ждем, пока сцена и системы полностью инициализируются
+  // После загрузки сцены стартуем MindAR
   scene.addEventListener('loaded', async () => {
     const mindarSystem = scene.systems['mindar-image-system'];
-    if(!mindarSystem) {
+    if (!mindarSystem) {
       alert('MindAR не загружен!');
       return;
     }
 
     try {
+      // Старт MindAR через user gesture
       await mindarSystem.start();
       console.log('MindAR запущен');
 
-      // События для статуса
-      target.addEventListener('targetFound', () => { status.textContent = 'Маркер найден'; });
-      target.addEventListener('targetLost', () => { status.textContent = 'Наведи камеру на маркер'; });
+      target.addEventListener('targetFound', () => status.textContent = 'Маркер найден');
+      target.addEventListener('targetLost', () => status.textContent = 'Наведи камеру на маркер');
 
-    } catch(e) {
-      alert('Ошибка запуска камеры. Обновите страницу и попробуйте снова.');
+    } catch (e) {
+      alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
       console.error(e);
     }
   });
