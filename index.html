@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 25</title>
+<title>WebAR — 26</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
@@ -48,7 +48,6 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
 
   startBtn.onclick = async function() {
     try {
-      // Создаем video элемент один раз
       let video = document.querySelector('video');
       if(!video){
         video = document.createElement('video');
@@ -65,7 +64,6 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
         document.body.appendChild(video);
       }
 
-      // Запрашиваем камеру (user gesture)
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
       video.srcObject = stream;
       await video.play();
@@ -73,11 +71,11 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
       startScreen.style.display='none';
       status.style.display='block';
 
+      // Старт MindAR напрямую (waitForTargetLoad недоступен в 1.1.4)
       const mindarSystem = scene.systems['mindar-image-system'];
       if(mindarSystem){
-        await mindarSystem.waitForTargetLoad();
         await mindarSystem.start({ facingMode:'environment' });
-        console.log("MindAR запущен и маркер загружен");
+        console.log("MindAR запущен");
       }
 
     } catch(err){
