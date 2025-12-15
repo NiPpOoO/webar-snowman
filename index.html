@@ -83,17 +83,18 @@ startBtn.addEventListener('click', () => {
   camera.setAttribute('look-controls', 'enabled:false');
   scene.appendChild(camera);
 
-  // Target и тестовый куб
-  const target = document.createElement('a-entity');
-  target.setAttribute('mindar-image-target', 'targetIndex:0');
-  const box = document.createElement('a-box');
-  box.setAttribute('position', '0 0 0');
-  box.setAttribute('width', '0.25');
-  box.setAttribute('height', '0.25');
-  box.setAttribute('depth', '0.25');
-  box.setAttribute('color', '#ff0000');
-  target.appendChild(box);
-  scene.appendChild(target);
+// Target и модель Fox
+const target = document.createElement('a-entity');
+target.setAttribute('mindar-image-target', 'targetIndex:0');
+
+const model = document.createElement('a-entity');
+model.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
+model.setAttribute('scale', '0.3 0.3 0.3');  // подбирается под маркер
+model.setAttribute('position', '0 0 0');     // относительно маркера
+
+target.appendChild(model);
+scene.appendChild(target);
+
 
   // После загрузки сцены стартуем MindAR
   scene.addEventListener('loaded', async () => {
