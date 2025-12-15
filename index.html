@@ -2,17 +2,16 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 52</title>
+<title>WebAR — 53</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- Совместимые версии -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
-#start { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10; background:#000; }
+html,body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
+#start { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#000; z-index:10; }
 #start button { padding:16px 26px; font-size:16px; border-radius:10px; border:none; }
 #status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.65); color:#fff; padding:8px 12px; border-radius:6px; font-size:14px; z-index:11; display:none; }
 a-scene { position:fixed !important; inset:0; background:transparent !important; }
@@ -27,7 +26,6 @@ a-scene { position:fixed !important; inset:0; background:transparent !important;
 
 <div id="status">Наведи камеру на маркер</div>
 
-<!-- Сцена создается сразу, но MindAR стартует после кнопки -->
 <a-scene
   id="scene"
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false"
@@ -52,20 +50,18 @@ startBtn.addEventListener('click', async () => {
   startScreen.style.display = 'none';
   status.style.display = 'block';
 
-  try {
-    // ⚡ Safari требует прямого user gesture для getUserMedia
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    
-    // Передаем поток в <a-scene> MindAR
-    const videoEl = scene.renderer.domElement; // MindAR берет свое видео сам, но поток нужен для gesture
-    // MindAR стартует уже после разрешения камеры
-    const mindarSystem = scene.systems['mindar-image-system'];
-    await mindarSystem.start();
-    console.log('MindAR запущен');
-  } catch (err) {
-    alert('Камера недоступна или заблокирована. Разрешите доступ и обновите страницу.');
-    console.error(err);
-  }
+  const mindarSystem = scene.systems['mindar-image-system'];
+
+  // ⚡ Нужна задержка на iOS, иначе Safari сразу блокирует
+  setTimeout(async () => {
+    try {
+      await mindarSystem.start();
+      console.log('MindAR запущен');
+    } catch (err) {
+      alert('Камера недоступна или Safari заблокировал доступ. Обновите страницу и попробуйте ещё раз.');
+      console.error(err);
+    }
+  }, 500); // задержка 0.5 секунды
 });
 
 // UI feedback
