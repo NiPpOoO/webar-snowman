@@ -23,13 +23,15 @@
       color: #fff; border-radius: 6px; font-size: 14px; cursor: pointer; z-index: 3;
     }
 
-    /* Анти‑зум: рендерим видео без кропа, canvas поверх */
-    #arjs-video, video[playsinline] {
+    /* Анти‑зум: вписываем видео без кропа, не трогаем поток */
+    #arjs-video, .arjs-video, video[playsinline] {
       position: fixed; left: 0; top: 0;
       width: 100vw; height: 100vh;
-      object-fit: contain; /* важно: не кропить, а вписывать */
+      object-fit: contain; /* ключ: убрать визуальный кроп */
       z-index: 1; background: #000;
     }
+
+    /* Canvas A‑Frame поверх видео */
     canvas.a-canvas {
       position: fixed !important;
       left: 0; top: 0; width: 100vw !important; height: 100vh !important;
@@ -37,8 +39,14 @@
     }
 
     /* Лоадер */
-    .arjs-loader { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; z-index: 4; }
-    .arjs-loader > div { background: rgba(0,0,0,0.6); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 14px; }
+    .arjs-loader {
+      position: fixed; left: 0; top: 0; width: 100vw; height: 100vh;
+      display: flex; align-items: center; justify-content: center; z-index: 4;
+    }
+    .arjs-loader > div {
+      background: rgba(0,0,0,0.6); color: #fff; padding: 10px 18px;
+      border-radius: 8px; font-size: 14px;
+    }
   </style>
 </head>
 <body style="margin:0; overflow:hidden;">
@@ -51,7 +59,7 @@
     vr-mode-ui="enabled: false;"
     renderer="logarithmicDepthBuffer: true; precision: medium;"
     embedded
-    arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; debugUIEnabled: false;"
+    arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; debugUIEnabled: false;"
   >
     <!-- Маркеры -->
     <a-nft id="snowman" type="nft"
@@ -103,6 +111,7 @@
 
       marker.addEventListener('markerLost', () => {
         status.textContent = `${markerName} не виден`;
+        modelEntity.setAttribute('visible', false); // чтобы не залипало
       });
 
       switchBtn.addEventListener('click', () => {
@@ -115,89 +124,12 @@
     setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
     setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
 
-    // Безопасное получение arSource (AR.js источник) после инициализации сцены
-    async function waitForArSource(sceneEl, maxTries = 40, delayMs = 100) {
-      for (let i = 0; i < maxTries; i++) {
-        const arSystem = sceneEl.systems && sceneEl.systems['arjs'];
-        const arSource = arSystem && arSystem.arSource;
-        if (arSource && arSource.domElement) return arSource;
-        await new Promise(r => setTimeout(r, delayMs));
-      }
-      return null;
-    }
-
-    // Инициализация камеры без OverconstrainedError и визуального «зума»
-    async function initCamera() {
-      const sceneEl = document.querySelector('a-scene');
-      const arSource = await waitForArSource(sceneEl);
-      if (!arSource) {
-        console.error('AR.js источник не найден.');
-        status.textContent = 'AR.js источник не найден';
-        return;
-      }
-
-      try {
-        // Совместимый запрос: environment для мобилок, true для ПК как fallback
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        let stream = await navigator.mediaDevices.getUserMedia({
-          video: isMobile ? { facingMode: "environment" } : true
-        });
-
-        // После разрешения — подменяем поток
-        const prevStream = arSource.domElement.srcObject;
-        if (prevStream && prevStream.getTracks) prevStream.getTracks().forEach(t => t.stop());
-
-        // Анти‑зум атрибуты видео
-        arSource.domElement.setAttribute('id', 'arjs-video');
-        arSource.domElement.setAttribute('playsinline', true);
-        arSource.domElement.muted = true;
-        arSource.domElement.autoplay = true;
-
-        arSource.domElement.srcObject = stream;
-        await arSource.domElement.play().catch(() => {});
-
-        // Синхронизация размеров
-        arSource.ready = true;
-        arSource.onResizeElement();
-        arSource.copyElementSizeTo(sceneEl.canvas);
-
-        // Логи реальных параметров
-        const track = stream.getVideoTracks()[0];
-        const settings = track.getSettings ? track.getSettings() : {};
-        console.log('📷 Камера активна:', settings);
-        status.textContent = `Камера: ${settings.width || '?'}×${settings.height || '?'}`;
-
-        // Скрываем лоадер
-        const loader = document.querySelector('.arjs-loader');
-        if (loader) loader.style.display = 'none';
-      } catch (err) {
-        console.error('❌ Ошибка камеры:', err);
-        status.textContent = `Ошибка камеры: ${err.name}`;
-
-        // Дополнительный fallback для десктопа: пробуем без параметров
-        try {
-          const streamFallback = await navigator.mediaDevices.getUserMedia({ video: true });
-          arSource.domElement.srcObject = streamFallback;
-          arSource.ready = true;
-          arSource.onResizeElement();
-          arSource.copyElementSizeTo(sceneEl.canvas);
-          const s = streamFallback.getVideoTracks()[0].getSettings();
-          status.textContent = `Камера (fallback): ${s.width || '?'}×${s.height || '?'}`;
-          const loader = document.querySelector('.arjs-loader');
-          if (loader) loader.style.display = 'none';
-        } catch (err2) {
-          console.error('❌ Fallback тоже не удалось:', err2);
-        }
-      }
-    }
-
-    // Ждём готовности сцены и только затем инициируем камеру
+    // Скрыть лоадер, когда сцена готова — без обращения к внутренностям AR.js
     const sceneEl = document.querySelector('a-scene');
-    if (sceneEl.hasLoaded) {
-      initCamera();
-    } else {
-      sceneEl.addEventListener('loaded', initCamera);
-    }
+    sceneEl.addEventListener('loaded', () => {
+      const loader = document.querySelector('.arjs-loader');
+      if (loader) loader.style.display = 'none';
+    });
   </script>
 </body>
 </html>
