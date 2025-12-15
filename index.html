@@ -2,56 +2,139 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>WebAR: снеговик как NFT‑маркер</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>WebAR Snowman — Fixed NFT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 
-  <!-- A‑Frame -->
+  <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <!-- AR.js NFT -->
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
-  <link rel="stylesheet" href="src/style.css" />
+  <style>
+    body { margin:0; overflow:hidden; font-family:system-ui,sans-serif; }
+    #status, #switchBtn, #cameraBtn {
+      position:absolute; right:10px; padding:8px 12px;
+      background:rgba(0,0,0,0.65); color:#fff; border-radius:6px;
+      font-size:14px; border:none; z-index:10;
+    }
+    #status { top:10px; }
+    #switchBtn { top:52px; }
+    #cameraBtn { top:94px; }
+    .arjs-loader {
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      background:#000; color:#fff; z-index:20;
+    }
+  </style>
 </head>
 <body>
-  <!-- UI -->
-  <div id="ui" class="ui">Наведи камеру на снеговика — появятся фигуры 🦊🐇</div>
-  <div id="bar" class="bar">
-    <button id="flip" class="btn">Сменить камеру</button>
-    <button id="shot" class="btn">Снимок</button>
-  </div>
-  <!-- Уведомление о неподдерживаемом устройстве -->
-  <div id="unsupported" class="unsupported" style="display:none;">
-    ❌ Ваше устройство или браузер не поддерживает WebAR. Попробуйте открыть сайт в Safari (iOS) или Chrome (Android).
-  </div>
-  <!-- AR‑сцена -->
-  <a-scene
-    id="scene"
-    embedded
-    renderer="colorManagement:true; antialias:false; alpha:true;"
-    vr-mode-ui="enabled:false"
-    arjs="trackingMethod:nft; sourceType:webcam; debugUIEnabled:false;"
-  >
-    <!-- NFT‑маркер снеговика -->
-    <a-nft
-      id="marker"
-      type="nft"
-      url="assets/markers/snowman/snowman"
-      emitevents="true"
-    >
-      <!-- Временные фигуры -->
-      <a-box position="-0.5 0 0" scale="0.3 0.3 0.3" color="#ff6600"
-             animation="property: rotation; to: 0 360 0; loop: true; dur: 6000"></a-box>
-      <a-sphere position="0.5 0 0" scale="0.25 0.25 0.25" color="#ffffff"
-                animation="property: position; to: 0.5 0.15 0; dir: alternate; loop: true; dur: 2200"></a-sphere>
 
-      <!-- Освещение -->
-      <a-entity light="type: ambient; intensity: 0.6"></a-entity>
-      <a-entity light="type: directional; intensity: 1.1" position="1 2 1"></a-entity>
-    </a-nft>
+<div class="arjs-loader"><div>Загрузка AR, подождите…</div></div>
+<div id="status">Инициализация…</div>
+<button id="switchBtn">Сменить модель</button>
+<button id="cameraBtn">Сменить камеру</button>
 
-    <a-entity camera></a-entity>
-  </a-scene>
+<a-scene
+  embedded
+  vr-mode-ui="enabled: false"
+  renderer="antialias: true;"
+  arjs="sourceType: webcam; facingMode: environment; trackingMethod: best; debugUIEnabled: false;"
+>
+  <!-- NFT-маркеры -->
+  <a-nft id="marker0" type="nft"
+    url="assets/markers/snowman/snowman"
+    emitevents="true">
+    <a-entity class="model"
+      gltf-model="assets/models/Fox1.glb"
+      scale="0.5 0.5 0.5" position="0 0 0" visible="false" animation-mixer></a-entity>
+  </a-nft>
 
-  <script src="src/script.js"></script>
+  <a-nft id="marker1" type="nft"
+    url="assets/markers/snowman1/snowman1"
+    emitevents="true">
+    <a-entity class="model"
+      gltf-model="assets/models/Fox1.glb"
+      scale="0.5 0.5 0.5" position="0 0 0" visible="false" animation-mixer></a-entity>
+  </a-nft>
+
+  <a-nft id="marker2" type="nft"
+    url="assets/markers/snowman2/snowman2"
+    emitevents="true">
+    <a-entity class="model"
+      gltf-model="assets/models/Fox1.glb"
+      scale="0.5 0.5 0.5" position="0 0 0" visible="false" animation-mixer></a-entity>
+  </a-nft>
+
+  <!-- Камера -->
+  <a-entity camera></a-entity>
+</a-scene>
+
+<script>
+const status = document.getElementById('status');
+const switchBtn = document.getElementById('switchBtn');
+const cameraBtn = document.getElementById('cameraBtn');
+
+const models = [
+  'assets/models/Fox1.glb',
+  'assets/models/Penguin.glb',
+  'assets/models/Bear.glb'
+];
+
+let currentModel = 0;
+let visibleMarkers = new Set();
+
+// Маркеры
+document.querySelectorAll('a-nft').forEach(marker => {
+  const model = marker.querySelector('.model');
+  marker.addEventListener('markerFound', () => {
+    model.setAttribute('visible', true);
+    visibleMarkers.add(marker);
+    status.textContent = 'Маркер найден';
+  });
+  marker.addEventListener('markerLost', () => {
+    model.setAttribute('visible', false);
+    visibleMarkers.delete(marker);
+    status.textContent = 'Маркер не виден';
+  });
+});
+
+// Переключение моделей
+switchBtn.addEventListener('click', () => {
+  currentModel = (currentModel + 1) % models.length;
+  visibleMarkers.forEach(marker => {
+    const model = marker.querySelector('.model');
+    model.setAttribute('gltf-model', models[currentModel]);
+  });
+});
+
+// Переключение камеры
+cameraBtn.addEventListener('click', async () => {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(d => d.kind === 'videoinput');
+    if (videoInputs.length > 1) {
+      const nextDevice = videoInputs[(Math.floor(Math.random()*videoInputs.length))];
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: nextDevice.deviceId } } });
+      const videoEl = document.querySelector('video');
+      if (videoEl) videoEl.srcObject = stream;
+      status.textContent = '📷 Камера переключена';
+    }
+  } catch (e) {
+    status.textContent = '❌ Ошибка переключения камеры';
+  }
+});
+
+// События сцены
+const scene = document.querySelector('a-scene');
+scene.addEventListener('loaded', () => {
+  document.querySelector('.arjs-loader').style.display = 'none';
+});
+scene.addEventListener('arjs-video-loaded', () => {
+  status.textContent = '📷 Камера активна';
+});
+scene.addEventListener('arjs-video-error', () => {
+  status.textContent = '❌ Ошибка камеры';
+});
+</script>
+
 </body>
 </html>
