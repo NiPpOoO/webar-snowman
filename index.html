@@ -2,185 +2,140 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>WebAR Snowman — Android First</title>
+  <title>WebAR Snowman — Universal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 
   <!-- A-Frame -->
-  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
 
   <!-- AR.js NFT -->
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: system-ui, sans-serif;
+    body { margin:0; overflow:hidden; font-family:system-ui,sans-serif; }
+    #status, #switchBtn, #cameraBtn {
+      position:absolute; right:10px; padding:8px 12px;
+      background:rgba(0,0,0,0.65); color:#fff; border-radius:6px;
+      font-size:14px; border:none; z-index:10;
     }
-
-    #status {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 8px 12px;
-      background: rgba(0,0,0,0.65);
-      color: #fff;
-      border-radius: 6px;
-      font-size: 14px;
-      z-index: 10;
-    }
-
-    #switchBtn {
-      position: absolute;
-      top: 52px;
-      right: 10px;
-      padding: 8px 12px;
-      background: rgba(0,0,0,0.65);
-      color: #fff;
-      border-radius: 6px;
-      font-size: 14px;
-      border: none;
-      z-index: 10;
-    }
-
+    #status { top:10px; }
+    #switchBtn { top:52px; }
+    #cameraBtn { top:94px; }
     .arjs-loader {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-      color: #fff;
-      z-index: 20;
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      background:#000; color:#fff; z-index:20;
     }
   </style>
 </head>
-
 <body>
 
-<div class="arjs-loader">
-  <div>Загрузка AR, подождите…</div>
-</div>
-
+<div class="arjs-loader"><div>Загрузка AR, подождите…</div></div>
 <div id="status">Инициализация…</div>
 <button id="switchBtn">Сменить модель</button>
+<button id="cameraBtn">Сменить камеру</button>
 
 <a-scene
   embedded
   vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true;"
-  arjs="
-    sourceType: webcam;
-    facingMode: environment;
-    trackingMethod: best;
-    debugUIEnabled: false;
-  "
+  renderer="antialias: true;"
+  arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
 >
-
-  <!-- MARKER 1 -->
-  <a-nft
-    id="marker0"
-    type="nft"
+  <!-- MARKERS -->
+  <a-nft id="marker0" type="nft"
     url="https://nippooo.github.io/webar-snowman/assets/markers/snowman/snowman"
-    emitevents="true"
-  >
-    <a-entity
-      class="model"
+    emitevents="true">
+    <a-entity class="model"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-      scale="0.3 0.3 0.3"
-      position="0 0 0"
-      visible="false"
-    ></a-entity>
+      scale="0.3 0.3 0.3" position="0 0 0" visible="false"></a-entity>
   </a-nft>
 
-  <!-- MARKER 2 -->
-  <a-nft
-    id="marker1"
-    type="nft"
+  <a-nft id="marker1" type="nft"
     url="https://nippooo.github.io/webar-snowman/assets/markers/snowman1/snowman1"
-    emitevents="true"
-  >
-    <a-entity
-      class="model"
+    emitevents="true">
+    <a-entity class="model"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-      scale="0.3 0.3 0.3"
-      position="0 0 0"
-      visible="false"
-    ></a-entity>
+      scale="0.3 0.3 0.3" position="0 0 0" visible="false"></a-entity>
   </a-nft>
 
-  <!-- MARKER 3 -->
-  <a-nft
-    id="marker2"
-    type="nft"
+  <a-nft id="marker2" type="nft"
     url="https://nippooo.github.io/webar-snowman/assets/markers/snowman2/snowman2"
-    emitevents="true"
-  >
-    <a-entity
-      class="model"
+    emitevents="true">
+    <a-entity class="model"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-      scale="0.3 0.3 0.3"
-      position="0 0 0"
-      visible="false"
-    ></a-entity>
+      scale="0.3 0.3 0.3" position="0 0 0" visible="false"></a-entity>
   </a-nft>
 
   <!-- CAMERA -->
   <a-entity camera></a-entity>
-
 </a-scene>
 
 <script>
-  const status = document.getElementById('status');
-  const switchBtn = document.getElementById('switchBtn');
+const status = document.getElementById('status');
+const switchBtn = document.getElementById('switchBtn');
+const cameraBtn = document.getElementById('cameraBtn');
 
-  const models = [
-    'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb',
-    'https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb',
-    'https://nippooo.github.io/webar-snowman/assets/models/Bear.glb'
-  ];
+const models = [
+  'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb',
+  'https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb',
+  'https://nippooo.github.io/webar-snowman/assets/models/Bear.glb'
+];
 
-  let currentModel = 0;
-  let visibleMarkers = new Set();
+let currentModel = 0;
+let visibleMarkers = new Set();
 
-  document.querySelectorAll('a-nft').forEach(marker => {
+// Маркеры
+document.querySelectorAll('a-nft').forEach(marker => {
+  const model = marker.querySelector('.model');
+  marker.addEventListener('markerFound', () => {
+    model.setAttribute('visible', true);
+    visibleMarkers.add(marker);
+    status.textContent = 'Маркер найден';
+  });
+  marker.addEventListener('markerLost', () => {
+    model.setAttribute('visible', false);
+    visibleMarkers.delete(marker);
+    status.textContent = 'Маркер не виден';
+  });
+});
+
+// Переключение моделей
+switchBtn.addEventListener('click', () => {
+  currentModel = (currentModel + 1) % models.length;
+  visibleMarkers.forEach(marker => {
     const model = marker.querySelector('.model');
-
-    marker.addEventListener('markerFound', () => {
-      model.setAttribute('visible', true);
-      visibleMarkers.add(marker);
-      status.textContent = 'Маркер найден';
-    });
-
-    marker.addEventListener('markerLost', () => {
-      model.setAttribute('visible', false);
-      visibleMarkers.delete(marker);
-      status.textContent = 'Маркер не виден';
-    });
+    model.setAttribute('gltf-model', models[currentModel]);
   });
+});
 
-  switchBtn.addEventListener('click', () => {
-    currentModel = (currentModel + 1) % models.length;
+// Переключение камеры (универсально)
+cameraBtn.addEventListener('click', async () => {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(d => d.kind === 'videoinput');
+    if (videoInputs.length > 1) {
+      const currentStream = document.querySelector('video');
+      if (currentStream) currentStream.srcObject.getTracks().forEach(t => t.stop());
+      const nextDevice = videoInputs[(Math.floor(Math.random()*videoInputs.length))];
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: nextDevice.deviceId } });
+      document.querySelector('video').srcObject = stream;
+      status.textContent = '📷 Камера переключена';
+    }
+  } catch (e) {
+    status.textContent = '❌ Ошибка переключения камеры';
+  }
+});
 
-    visibleMarkers.forEach(marker => {
-      const model = marker.querySelector('.model');
-      model.setAttribute('gltf-model', models[currentModel]);
-    });
-  });
-
-  const scene = document.querySelector('a-scene');
-
-  scene.addEventListener('loaded', () => {
-    document.querySelector('.arjs-loader').style.display = 'none';
-  });
-
-  scene.addEventListener('arjs-video-loaded', () => {
-    status.textContent = '📷 Камера активна';
-  });
-
-  scene.addEventListener('arjs-video-error', () => {
-    status.textContent = '❌ Ошибка камеры';
-  });
+// События сцены
+const scene = document.querySelector('a-scene');
+scene.addEventListener('loaded', () => {
+  document.querySelector('.arjs-loader').style.display = 'none';
+});
+scene.addEventListener('arjs-video-loaded', () => {
+  status.textContent = '📷 Камера активна';
+});
+scene.addEventListener('arjs-video-error', () => {
+  status.textContent = '❌ Ошибка камеры';
+});
 </script>
 
 </body>
