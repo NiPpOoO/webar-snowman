@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 14</title>
+<title>WebAR — 15</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -156,6 +156,15 @@ canvas, video {
   let currentModel = 1;
 
   async function startAR(facing) {
+    // Прямой запрос камеры
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
+      console.log("Камера разрешена");
+    } catch(err){
+      alert("Доступ к камере запрещен или недоступен");
+      return;
+    }
+
     startScreen.style.display = 'none';
     ui.style.display = 'flex';
     status.style.display = 'block';
@@ -164,15 +173,14 @@ canvas, video {
     try {
       await mindarSystem.start({ facingMode: facing });
     } catch(e){
-      console.error("Ошибка запуска камеры:", e);
-      alert("Не удалось получить доступ к камере");
+      console.error("Ошибка запуска MindAR:", e);
+      alert("Не удалось запустить AR");
       startScreen.style.display = 'flex';
       ui.style.display = 'none';
       status.style.display = 'none';
       return;
     }
 
-    // Видео на весь экран
     const videoEl = document.querySelector('video');
     if(videoEl){
       videoEl.style.width = '100vw';
@@ -181,10 +189,8 @@ canvas, video {
     }
   }
 
-  // Сразу запускаем AR из клика
   startBtn.addEventListener('click', () => startAR('environment'));
 
-  // CAMERA SWITCH
   btnCamera.addEventListener('click', async () => {
     facingMode = facingMode === 'environment' ? 'user' : 'environment';
     const mindarSystem = scene.systems['mindar-image-system'];
@@ -192,21 +198,14 @@ canvas, video {
     await startAR(facingMode);
   });
 
-  // MODEL SWITCH
   btnModel.addEventListener('click', () => {
     currentModel = currentModel === 1 ? 2 : 1;
     model1.setAttribute('visible', currentModel === 1);
     model2.setAttribute('visible', currentModel === 2);
   });
 
-  // TARGET EVENTS
-  target.addEventListener('targetFound', () => {
-    status.textContent = 'Маркер найден';
-  });
-
-  target.addEventListener('targetLost', () => {
-    status.textContent = 'Наведи камеру на маркер';
-  });
+  target.addEventListener('targetFound', () => status.textContent = 'Маркер найден');
+  target.addEventListener('targetLost', () => status.textContent = 'Наведи камеру на маркер');
 })();
 </script>
 
