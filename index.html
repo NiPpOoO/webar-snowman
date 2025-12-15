@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 20</title>
+<title>WebAR — 21</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -36,7 +36,6 @@ a-scene { position:fixed !important; top:0; left:0; width:100vw !important; heig
 <!-- UI -->
 <div id="ui">
   <button id="btnCamera">Сменить камеру</button>
-  <button id="btnModel">Сменить модель</button>
 </div>
 
 <div id="status">Наведи камеру на маркер</div>
@@ -52,13 +51,8 @@ a-scene { position:fixed !important; top:0; left:0; width:100vw !important; heig
 
   <!-- Target -->
   <a-entity id="target" mindar-image-target="targetIndex:0">
-    <!-- Model 1 (фигуры) -->
-    <a-entity id="model1" visible="true">
-      <a-sphere position="0 0.15 0" radius="0.15" color="#ffffff"></a-sphere>
-      <a-sphere position="0 -0.1 0" radius="0.22" color="#ffffff"></a-sphere>
-    </a-entity>
-    <!-- Model 2 (анимируемый glTF placeholder) -->
-    <a-entity id="model2" visible="false" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb" scale="0.3 0.3 0.3"></a-entity>
+    <!-- Куб вместо glTF -->
+    <a-box id="cube" visible="true" position="0 0 0" depth="0.3" height="0.3" width="0.3" color="#ff6600"></a-box>
   </a-entity>
 </a-scene>
 
@@ -69,23 +63,18 @@ a-scene { position:fixed !important; top:0; left:0; width:100vw !important; heig
   const ui = document.getElementById('ui');
   const status = document.getElementById('status');
   const btnCamera = document.getElementById('btnCamera');
-  const btnModel = document.getElementById('btnModel');
 
   const videoEl = document.getElementById('cameraVideo');
   const scene = document.getElementById('scene');
   const target = document.getElementById('target');
-  const model1 = document.getElementById('model1');
-  const model2 = document.getElementById('model2');
 
   let facingMode = 'environment';
-  let currentModel = 1;
 
   function startAR(facing) {
-    // Весь код запуска камеры и MindAR внутри user gesture
     navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } })
       .then(stream => {
         videoEl.srcObject = stream;
-        videoEl.play().catch(()=>{}); // Safari требует play внутри клика
+        videoEl.play().catch(()=>{});
         startScreen.style.display = 'none';
         ui.style.display = 'flex';
         status.style.display = 'block';
@@ -110,12 +99,6 @@ a-scene { position:fixed !important; top:0; left:0; width:100vw !important; heig
     const mindarSystem = scene.systems['mindar-image-system'];
     if(mindarSystem) mindarSystem.stop();
     startAR(facingMode);
-  });
-
-  btnModel.addEventListener('click', () => {
-    currentModel = currentModel===1 ? 2 : 1;
-    model1.setAttribute('visible', currentModel===1);
-    model2.setAttribute('visible', currentModel===2);
   });
 
   target.addEventListener('targetFound', () => status.textContent='Маркер найден');
