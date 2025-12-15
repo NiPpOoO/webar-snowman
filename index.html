@@ -48,6 +48,29 @@ navigator.mediaDevices.getUserMedia({ video: true })
   .catch(err => console.error("❌ Камера не работает:", err));
 </script>
 
+<script>
+navigator.mediaDevices.enumerateDevices().then(devices => {
+  const videoDevices = devices.filter(d => d.kind === "videoinput");
+  const backCam = videoDevices.find(d => d.label.toLowerCase().includes("back"));
+
+  const constraints = backCam
+    ? { video: { deviceId: { exact: backCam.deviceId } } }
+    : { video: { facingMode: { exact: "environment" } } };
+
+  navigator.mediaDevices.getUserMedia(constraints)
+    .then(stream => {
+      console.log("✅ Камера подключена");
+      const video = document.querySelector("video");
+      if (video) video.srcObject = stream;
+    })
+    .catch(err => {
+      const status = document.getElementById('status');
+      status.textContent = `Ошибка камеры: ${err.name}`;
+      alert("Ошибка камеры: " + err.name + "\n" + err.message);
+    });
+});
+</script>
+
     <a-scene
     vr-mode-ui="enabled: false;"
     renderer="logarithmicDepthBuffer: true; precision: medium;"
