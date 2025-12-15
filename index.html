@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 12</title>
+<title>WebAR — 13 Fixed</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -23,25 +23,17 @@ html, body {
   overflow: hidden;
 }
 
-a-scene {
-  position: fixed !important;
-  top: 0;
-  left: 0;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 2;
-  background: transparent !important;
-}
-
-canvas, video {
+/* SCENE & VIDEO FIXED */
+a-scene, canvas, video {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
   object-fit: cover !important;
-  z-index: 1;
   background: transparent !important;
+  pointer-events: none !important; /* ⚠️ фикс кликов */
+  z-index: 1;
 }
 
 /* START SCREEN */
@@ -60,6 +52,7 @@ canvas, video {
   font-size: 16px;
   border-radius: 10px;
   border: none;
+  cursor: pointer;
 }
 
 /* UI */
@@ -81,6 +74,7 @@ canvas, video {
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 14px;
+  cursor: pointer;
 }
 
 #status {
@@ -122,15 +116,12 @@ canvas, video {
 >
   <a-camera look-controls="enabled:false"></a-camera>
 
-  <!-- TARGET -->
   <a-entity id="target" mindar-image-target="targetIndex:0">
-    <!-- MODEL 1 -->
     <a-entity id="model1" visible="true">
       <a-sphere position="0 0.15 0" radius="0.15" color="#ffffff"></a-sphere>
       <a-sphere position="0 -0.1 0" radius="0.22" color="#ffffff"></a-sphere>
     </a-entity>
 
-    <!-- MODEL 2 -->
     <a-entity id="model2" visible="false">
       <a-box position="0 0 0" width="0.3" height="0.3" depth="0.3" color="#ff6600"></a-box>
     </a-entity>
@@ -155,7 +146,6 @@ canvas, video {
   let facingMode = 'environment';
   let currentModel = 1;
 
-  // Ждём полной загрузки сцены
   scene.addEventListener('loaded', () => {
 
     async function startAR(facing) {
@@ -207,7 +197,7 @@ canvas, video {
       status.textContent = 'Наведи камеру на маркер';
     });
 
-  }); // scene loaded
+  });
 })();
 </script>
 
