@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 27</title>
+<title>WebAR — 28</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
@@ -30,12 +30,9 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false"
   vr-mode-ui="enabled:false"
   renderer="alpha:true">
-  
   <a-camera look-controls="enabled:false"></a-camera>
-
   <a-entity id="target" mindar-image-target="targetIndex:0">
-    <!-- Placeholder куб для AR -->
-    <a-box position="0 0 0" depth="0.2" height="0.2" width="0.2" color="#00ff00" visible="true"></a-box>
+    <a-box position="0 0 0" depth="0.2" height="0.2" width="0.2" color="#ff0000" visible="true"></a-box>
   </a-entity>
 </a-scene>
 
@@ -47,24 +44,32 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
   const scene = document.getElementById('scene');
   const target = document.getElementById('target');
 
-  startBtn.onclick = async function() {
-    try {
-      let video = document.querySelector('video');
-      if(!video){
-        video = document.createElement('video');
-        video.setAttribute('autoplay','true');
-        video.setAttribute('muted','true');
-        video.setAttribute('playsinline','true');
-        video.style.position='fixed';
-        video.style.top='0';
-        video.style.left='0';
-        video.style.width='100vw';
-        video.style.height='100vh';
-        video.style.objectFit='cover';
-        video.style.zIndex='0';
-        document.body.appendChild(video);
-      }
+  let video;
 
+  startBtn.onclick = async function() {
+    // Проверка поддержки getUserMedia
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      alert("Ваш браузер не поддерживает камеру. Используйте Safari или Chrome на iOS/Android.");
+      return;
+    }
+
+    // Создаем видео элемент один раз
+    if(!video){
+      video = document.createElement('video');
+      video.setAttribute('autoplay','true');
+      video.setAttribute('muted','true');
+      video.setAttribute('playsinline','true');
+      video.style.position='fixed';
+      video.style.top='0';
+      video.style.left='0';
+      video.style.width='100vw';
+      video.style.height='100vh';
+      video.style.objectFit='cover';
+      video.style.zIndex='0';
+      document.body.appendChild(video);
+    }
+
+    try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
       video.srcObject = stream;
       await video.play();
@@ -73,14 +78,11 @@ video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-in
       status.style.display='block';
 
       const mindarSystem = scene.systems['mindar-image-system'];
-      if(mindarSystem){
-        await mindarSystem.start({ facingMode:'environment' });
-        console.log("MindAR запущен");
-      }
+      if(mindarSystem) await mindarSystem.start({ facingMode:'environment' });
 
-    } catch(err){
-      console.error("Ошибка AR:", err);
-      alert("Камера недоступна или отказано в доступе");
+    } catch(e){
+      console.error("Камера недоступна:", e);
+      alert("Камера недоступна или отказано в доступе. Попробуйте открыть ссылку через Telegram или другой браузер.");
     }
   };
 
