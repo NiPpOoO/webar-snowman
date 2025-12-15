@@ -2,147 +2,31 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>WebAR: Несколько маркеров снеговика</title>
+  <title>WebAR: Снеговик</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Стабильная связка -->
+  <!-- Проверенная связка -->
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.3.2/aframe/build/aframe-ar-nft.js"></script>
-
-  <style>
-    #status {
-      position: absolute; top: 10px; right: 10px;
-      padding: 8px 12px; background: rgba(0,0,0,0.6);
-      color: #fff; border-radius: 6px; font-size: 14px; z-index: 3;
-    }
-    #switchBtn {
-      position: absolute; top: 50px; right: 10px;
-      padding: 8px 12px; background: rgba(0,0,0,0.6);
-      color: #fff; border-radius: 6px; font-size: 14px; cursor: pointer; z-index: 3;
-    }
-
-    /* Видео камеры: сразу нормальный зум */
-    .arjs-video, video[playsinline] {
-      position: fixed; left: 0; top: 0;
-      width: 100vw; height: 100vh;
-      object-fit: contain;
-      transform: scale(0.85);          /* ← ключевой момент */
-      transform-origin: center center;
-      z-index: 1; background: #000;
-    }
-    canvas.a-canvas {
-      position: fixed !important;
-      left: 0; top: 0; width: 100vw !important; height: 100vh !important;
-      z-index: 2; pointer-events: none;
-    }
-
-    .arjs-loader {
-      position: fixed; left: 0; top: 0; width: 100vw; height: 100vh;
-      display: flex; align-items: center; justify-content: center; z-index: 4;
-    }
-    .arjs-loader > div {
-      background: rgba(0,0,0,0.6); color: #fff; padding: 10px 18px;
-      border-radius: 8px; font-size: 14px;
-    }
-  </style>
 </head>
 <body style="margin:0; overflow:hidden;">
-  <div class="arjs-loader"><div>Загрузка маркеров, подождите…</div></div>
-
-  <div id="status">Маркер не виден</div>
-  <button id="switchBtn">Сменить модель</button>
-
   <a-scene
     vr-mode-ui="enabled: false;"
-    renderer="logarithmicDepthBuffer: true; precision: medium;"
     embedded
     arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; debugUIEnabled: false;"
   >
-    <a-assets timeout="30000">
-      <a-asset-item id="mdl-fox" src="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"></a-asset-item>
-      <a-asset-item id="mdl-penguin" src="https://nippooo.github.io/webar-snowman/assets/models/Penguin.glb"></a-asset-item>
-      <a-asset-item id="mdl-bear" src="https://nippooo.github.io/webar-snowman/assets/models/Bear.glb"></a-asset-item>
-    </a-assets>
-
-    <!-- Маркер снеговика -->
-    <a-nft id="snowman" type="nft"
+    <a-nft type="nft"
       url="https://nippooo.github.io/webar-snowman/assets/markers/snowman/snowman"
       emitevents="true">
-      <a-entity id="model-snowman"
-        gltf-model="#mdl-fox"
+      <a-entity
+        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
         scale="0.3 0.3 0.3"
         position="0 0 0"
-        visible="false"
-        animation-mixer>
-      </a-entity>
-    </a-nft>
-
-    <!-- Маркер снеговика 1 -->
-    <a-nft id="snowman1" type="nft"
-      url="https://nippooo.github.io/webar-snowman/assets/markers/snowman1/snowman1"
-      emitevents="true">
-      <a-entity id="model-snowman1"
-        gltf-model="#mdl-fox"
-        scale="0.3 0.3 0.3"
-        position="0 0 0"
-        visible="false"
-        animation-mixer>
-      </a-entity>
-    </a-nft>
-
-    <!-- Маркер снеговика 2 -->
-    <a-nft id="snowman2" type="nft"
-      url="https://nippooo.github.io/webar-snowman/assets/markers/snowman2/snowman2"
-      emitevents="true">
-      <a-entity id="model-snowman2"
-        gltf-model="#mdl-fox"
-        scale="0.3 0.3 0.3"
-        position="0 0 0"
-        visible="false"
         animation-mixer>
       </a-entity>
     </a-nft>
 
     <a-entity camera></a-entity>
   </a-scene>
-
-  <script>
-    const status = document.getElementById('status');
-    const switchBtn = document.getElementById('switchBtn');
-
-    const modelIds = ['#mdl-fox', '#mdl-penguin', '#mdl-bear'];
-    let currentIndex = 0;
-
-    function setupMarker(markerId, modelId, markerName) {
-      const marker = document.getElementById(markerId);
-      const modelEntity = document.getElementById(modelId);
-
-      marker.addEventListener('markerFound', () => {
-        status.textContent = `${markerName} виден`;
-        modelEntity.setAttribute('visible', true);
-      });
-
-      marker.addEventListener('markerLost', () => {
-        status.textContent = `${markerName} не виден`;
-        modelEntity.setAttribute('visible', false);
-      });
-
-      switchBtn.addEventListener('click', () => {
-        currentIndex = (currentIndex + 1) % modelIds.length;
-        modelEntity.setAttribute('gltf-model', modelIds[currentIndex]);
-      });
-    }
-
-    setupMarker('snowman', 'model-snowman', 'Снеговик');
-    setupMarker('snowman1', 'model-snowman1', 'Снеговик1');
-    setupMarker('snowman2', 'model-snowman2', 'Снеговик2');
-
-    const sceneEl = document.querySelector('a-scene');
-    sceneEl.addEventListener('loaded', () => {
-      const loader = document.querySelector('.arjs-loader');
-      if (loader) loader.style.display = 'none';
-      console.log('✅ Сцена загружена, ждём маркеры...');
-    });
-  </script>
 </body>
 </html>
