@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 87</title>
+<title>WebAR — 88</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -49,7 +49,6 @@ startBtn.addEventListener('click', () => {
   const target = document.createElement('a-entity');
   target.setAttribute('mindar-image-target', 'targetIndex:0');
 
-  // Обёртка для модели
   const wrapper = document.createElement('a-entity');
   wrapper.setAttribute('id','wrapper');
   wrapper.setAttribute('position','-0.3 -0.3 0');
@@ -65,30 +64,22 @@ startBtn.addEventListener('click', () => {
   let mixer = null;
 
   model.addEventListener('model-loaded', (e) => {
-    const gltf = e.detail.model;
+    const mesh = e.detail.model;
+    const gltf = mesh.el.getObject3D('mesh').gltf; // получаем gltf с анимациями
 
-    function findAnimations(obj){
-      if(obj.animations && obj.animations.length>0) return obj;
-      for(let child of obj.children){
-        const res = findAnimations(child);
-        if(res) return res;
-      }
-      return null;
-    }
-
-    const animObject = findAnimations(gltf);
-    if(!animObject){
-      status.textContent = '❌ Анимация не найдена';
+    if(!gltf || !gltf.animations || gltf.animations.length === 0){
+      status.textContent = '❌ Анимации не найдено';
       return;
     }
 
-    mixer = new THREE.AnimationMixer(animObject);
-    const clip = animObject.animations[0];
-    const action = mixer.clipAction(clip);
-    action.setLoop(THREE.LoopRepeat);
-    action.play();
+    mixer = new THREE.AnimationMixer(mesh.object3D);
+    gltf.animations.forEach((clip) => {
+      const action = mixer.clipAction(clip);
+      action.setLoop(THREE.LoopRepeat);
+      action.play();
+    });
 
-    status.textContent = '▶️ Анимация запущена: ' + clip.name;
+    status.textContent = '▶️ Анимация запущена: ' + gltf.animations.map(a => a.name).join(', ');
   });
 
   // Сглаживание позиции/ротации
@@ -97,11 +88,10 @@ startBtn.addEventListener('click', () => {
 
   scene.addEventListener('tick', (ev) => {
     if(mixer) mixer.update(ev.detail.delta / 1000);
+
     const obj = wrapper.object3D;
     if(obj){
-      // Позиция
       obj.position.lerp(prevPos.set(obj.position.x,obj.position.y,obj.position.z), 0.2);
-      // Ротация
       obj.rotation.set(
         THREE.MathUtils.lerp(prevRot.x,obj.rotation.x,0.2),
         THREE.MathUtils.lerp(prevRot.y,obj.rotation.y,0.2),
