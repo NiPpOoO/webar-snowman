@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1Stable MultiMarker</title>
+<title>WebAR — MultiMarker Fixed</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- A-Frame (через jsDelivr, работает без VPN) -->
+<!-- A-Frame -->
 <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
@@ -62,67 +62,41 @@ const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
 
 const markersCount = 6; // количество картинок в .mind
-let activeMarker = null;
 
-// Общий контейнер
-const contentRoot = document.createElement('a-entity');
-scene.appendChild(contentRoot);
-contentRoot.setAttribute('smooth-follow','');
-contentRoot.setAttribute('visible','false');
-
-// Smooth follow component
-AFRAME.registerComponent('smooth-follow', {
-  tick() {
-    if (!activeMarker) return;
-    const src = activeMarker.object3D;
-    const dst = contentRoot.object3D;
-    dst.position.lerp(src.position, 0.03);
-    dst.quaternion.slerp(src.quaternion, 0.15);
-  }
-});
-
-// Функция создания маркера
+// Функция создания маркера с собственным контентом
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
+  // Контент для этого маркера
   const content = document.createElement('a-entity');
+  content.setAttribute('visible','false');
 
-  const snowmanWrapper = document.createElement('a-entity');
-  snowmanWrapper.setAttribute('position','-0.3 -0.3 0');
   const snowmanModel = document.createElement('a-entity');
   snowmanModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   snowmanModel.setAttribute('scale','0.3 0.3 0.3');
   snowmanModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  snowmanWrapper.appendChild(snowmanModel);
-  content.appendChild(snowmanWrapper);
+  content.appendChild(snowmanModel);
 
-  const secondWrapper = document.createElement('a-entity');
-  secondWrapper.setAttribute('position','0.3 -0.3 0');
   const secondModel = document.createElement('a-entity');
   secondModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   secondModel.setAttribute('scale','0.25 0.25 0.25');
+  secondModel.setAttribute('position','0.4 0 0');
   secondModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  secondWrapper.appendChild(secondModel);
-  content.appendChild(secondWrapper);
+  content.appendChild(secondModel);
 
   marker.appendChild(content);
 
+  // События для конкретного маркера
   marker.addEventListener('targetFound', ()=>{
-    activeMarker = marker;
-    contentRoot.setAttribute('visible', true);
+    content.setAttribute('visible', true);
     status.textContent = `Маркер ${index} найден`;
   });
 
   marker.addEventListener('targetLost', ()=>{
-    setTimeout(()=>{
-      if(activeMarker===marker){
-        activeMarker = null;
-        contentRoot.setAttribute('visible', false);
-        status.textContent = 'Наведи камеру на маркер';
-      }
-    },200);
+    content.setAttribute('visible', false);
+    status.textContent = 'Наведи камеру на маркер';
   });
 
   return marker;
