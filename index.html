@@ -2,125 +2,109 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 106</title>
+<title>WebAR — 107</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-
-<!-- animation-mixer -->
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
-
-<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-html, body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+html, body { margin:0; width:100%; height:100%; overflow:hidden; }
+#start {
+  position:fixed; inset:0; background:#000;
+  display:flex; align-items:center; justify-content:center;
+  z-index:10;
+}
+#start button {
+  padding:16px 26px; font-size:16px;
+  border-radius:10px; border:none;
 }
 #status {
-  position: fixed;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  z-index: 10;
+  position:fixed; bottom:12px; left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.6);
+  color:#fff; padding:8px 12px;
+  border-radius:6px; z-index:11;
+  display:none;
 }
 </style>
 </head>
 
 <body>
 
+<div id="start">
+  <button id="startBtn">Запустить AR</button>
+</div>
 <div id="status">Наведи камеру на маркер</div>
 
 <a-scene
-  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind;"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false"
-  renderer="alpha: true">
+  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart: false;"
+  vr-mode-ui="enabled:false"
+  device-orientation-permission-ui="enabled:false"
+  renderer="alpha:true">
 
-  <a-camera look-controls="enabled: false"></a-camera>
+  <a-camera look-controls="enabled:false"></a-camera>
 
-  <!-- ОБЩИЙ КОНТЕЙНЕР С ОБЪЕКТАМИ -->
-  <a-entity id="content-root" visible="false">
+  <!-- ===== 6 МАРКЕРОВ С ОДНИМ И ТЕМ ЖЕ КОНТЕНТОМ ===== -->
 
-    <!-- СНЕГОВИК -->
-    <a-entity position="-0.3 -0.3 0">
-      <a-entity
-        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-        scale="0.3 0.3 0.3"
-        animation-mixer="clip: *; loop: repeat">
+  <!-- ФУНКЦИЯ КОНТЕНТА: снеговик + второй персонаж -->
+  <template id="content-template">
+    <a-entity position="0 0 0">
+
+      <a-entity position="-0.3 -0.3 0">
+        <a-entity
+          gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+          scale="0.3 0.3 0.3"
+          animation-mixer="clip:*; loop:repeat">
+        </a-entity>
       </a-entity>
-    </a-entity>
 
-    <!-- ВТОРАЯ МОДЕЛЬ СПРАВА -->
-    <a-entity position="0.3 -0.3 0">
-      <a-entity
-        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-        scale="0.25 0.25 0.25"
-        animation-mixer="clip: *; loop: repeat">
+      <a-entity position="0.3 -0.3 0">
+        <a-entity
+          gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+          scale="0.25 0.25 0.25"
+          animation-mixer="clip:*; loop:repeat">
+        </a-entity>
       </a-entity>
+
     </a-entity>
+  </template>
 
-  </a-entity>
-
-  <!-- 6 МАРКЕРОВ (РАЗНЫЕ СТОРОНЫ ОДНОГО ОБЪЕКТА) -->
-  <a-entity mindar-image-target="targetIndex: 0" class="marker"></a-entity>
-  <a-entity mindar-image-target="targetIndex: 1" class="marker"></a-entity>
-  <a-entity mindar-image-target="targetIndex: 2" class="marker"></a-entity>
-  <a-entity mindar-image-target="targetIndex: 3" class="marker"></a-entity>
-  <a-entity mindar-image-target="targetIndex: 4" class="marker"></a-entity>
-  <a-entity mindar-image-target="targetIndex: 5" class="marker"></a-entity>
+  <!-- МАРКЕРЫ -->
+  <a-entity mindar-image-target="targetIndex:0" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:1" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:2" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:3" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:4" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:5" class="marker"></a-entity>
 
 </a-scene>
 
 <script>
+const startBtn = document.getElementById('startBtn');
 const status = document.getElementById('status');
-const content = document.getElementById('content-root');
+const scene = document.querySelector('a-scene');
 const markers = document.querySelectorAll('.marker');
-
-let activeMarker = null;
-
-// сглаживание
-AFRAME.registerComponent('smooth-follow', {
-  tick() {
-    if (!activeMarker) return;
-
-    const src = activeMarker.object3D;
-    const dst = content.object3D;
-
-    dst.position.lerp(src.position, 0.15);
-    dst.quaternion.slerp(src.quaternion, 0.15);
-  }
-});
-
-content.setAttribute('smooth-follow', '');
+const template = document.getElementById('content-template');
 
 markers.forEach(marker => {
+  marker.appendChild(template.content.cloneNode(true));
+
   marker.addEventListener('targetFound', () => {
-    activeMarker = marker;
-    content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
   });
 
   marker.addEventListener('targetLost', () => {
-    // не скрываем сразу — ждём следующий
-    setTimeout(() => {
-      if (activeMarker === marker) {
-        activeMarker = null;
-        content.setAttribute('visible', false);
-        status.textContent = 'Наведи камеру на маркер';
-      }
-    }, 200);
+    status.textContent = 'Наведи камеру на маркер';
   });
+});
+
+startBtn.addEventListener('click', async () => {
+  document.getElementById('start').style.display = 'none';
+  status.style.display = 'block';
+  await scene.systems['mindar-image-system'].start();
 });
 </script>
 
