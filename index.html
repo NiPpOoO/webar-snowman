@@ -2,11 +2,14 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 163</title>
+<title>WebAR — Stable MultiMarker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
+<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
@@ -58,100 +61,74 @@ const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
-let activeMarker = null;
 
-// Smooth follow component
-AFRAME.registerComponent('smooth-follow', {
-  tick() {
-    if (!activeMarker) return;
-    const src = activeMarker.object3D;
-    const dst = contentRoot.object3D;
-    dst.position.lerp(src.position, 0.15);
-    dst.quaternion.slerp(src.quaternion, 0.15);
-  }
-});
-
-// Создаем общий контейнер контента
-const contentRoot = document.createElement('a-entity');
-scene.appendChild(contentRoot);
-contentRoot.setAttribute('smooth-follow','');
-contentRoot.setAttribute('visible','false');
-
-// Функция создания маркера с контентом
+// Функция создания маркера с моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контент (снеговик + второй персонаж)
+  // Контейнер моделей
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
 
-  // Снеговик
-  const snowmanWrapper = document.createElement('a-entity');
-  snowmanWrapper.setAttribute('position','-0.3 -0.3 0');
-  const snowmanModel = document.createElement('a-entity');
-  snowmanModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  snowmanModel.setAttribute('scale','0.3 0.3 0.3');
-  snowmanModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  snowmanWrapper.appendChild(snowmanModel);
-  content.appendChild(snowmanWrapper);
+  // Модель слева
+  const leftWrapper = document.createElement('a-entity');
+  leftWrapper.setAttribute('position','-0.3 -0.3 0');
+  const leftModel = document.createElement('a-entity');
+  leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
+  leftModel.setAttribute('scale','0.3 0.3 0.3');
+  leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  leftWrapper.appendChild(leftModel);
+  content.appendChild(leftWrapper);
 
-  // Вторая модель справа
-  const secondWrapper = document.createElement('a-entity');
-  secondWrapper.setAttribute('position','0.3 -0.3 0');
-  const secondModel = document.createElement('a-entity');
-  secondModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  secondModel.setAttribute('scale','0.25 0.25 0.25');
-  secondModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  secondWrapper.appendChild(secondModel);
-  content.appendChild(secondWrapper);
+  // Модель справа
+  const rightWrapper = document.createElement('a-entity');
+  rightWrapper.setAttribute('position','0.3 -0.3 0');
+  const rightModel = document.createElement('a-entity');
+  rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
+  rightModel.setAttribute('scale','0.25 0.25 0.25');
+  rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  rightWrapper.appendChild(rightModel);
+  content.appendChild(rightWrapper);
 
   marker.appendChild(content);
 
-  marker.addEventListener('targetFound', ()=> {
-    activeMarker = marker;
-    contentRoot.setAttribute('visible', true);
+  marker.addEventListener('targetFound', ()=>{
+    content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
   });
 
-  marker.addEventListener('targetLost', ()=> {
-    setTimeout(()=> {
-      if(activeMarker===marker){
-        activeMarker = null;
-        contentRoot.setAttribute('visible', false);
-        status.textContent = 'Наведи камеру на маркер';
-      }
+  marker.addEventListener('targetLost', ()=>{
+    setTimeout(()=>{
+      content.setAttribute('visible', false);
+      status.textContent = 'Наведи камеру на маркер';
     },200);
   });
 
   return marker;
 }
 
-// Создаем все маркеры
-for(let i=0; i<markersCount; i++){
+// Создаем маркеры
+for(let i=0;i<markersCount;i++){
   createMarker(i);
 }
 
-// Старт AR по user gesture (работает на всех устройствах)
-function startAR() {
+// Старт AR и музыки по кнопке
+startBtn.addEventListener('click', async ()=>{
   startBtn.disabled = true;
   startScreen.style.display='none';
   status.style.display='block';
   try {
     const mindar = scene.systems['mindar-image-system'];
-    mindar.start().then(()=>{
-      const music = document.getElementById('music');
-      music.components.sound.playSound();
-    });
+    await mindar.start();
+    const music = document.getElementById('music');
+    music.components.sound.playSound();
   } catch(e){
     alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
     console.error(e);
   }
-}
-
-startBtn.addEventListener('click', startAR);
-startBtn.addEventListener('touchstart', startAR, {passive:true});
+});
 </script>
 
 </body>
