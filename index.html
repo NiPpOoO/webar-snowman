@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 92</title>
+<title>WebAR — 93</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -66,42 +66,54 @@ startBtn.addEventListener('click', () => {
   target.appendChild(wrapper);
   scene.appendChild(target);
 
-  let mixer = null;
+  // Переменная для mixer
+  wrapper.mixer = null;
 
   model.addEventListener('model-loaded', (e) => {
     const entity = e.target;
-    const obj3D = entity.getObject3D('mesh');
-    if (!obj3D) {
-      console.warn("object3D 'mesh' ещё не готов");
-      status.textContent = '❌ object3D не готов';
+    const meshRoot = entity.getObject3D('mesh');
+    if (!meshRoot) {
+      console.warn("Mesh ещё не готов");
+      status.textContent = '❌ Mesh не готов';
       return;
     }
 
-    const animations = obj3D.animations;
-    console.log("Animations:", animations);
+    console.log("Mesh root:", meshRoot);
 
-    if (!animations || animations.length === 0) {
-      console.warn("Анимации не найдены");
+    // Находим первый SkinnedMesh с анимациями
+    let skinned = null;
+    meshRoot.traverse((child) => {
+      if (child.isSkinnedMesh && child.animations && child.animations.length > 0) {
+        skinned = child;
+      }
+    });
+
+    if (!skinned) {
+      console.warn("SkinnedMesh с анимациями не найден");
       status.textContent = '❌ Анимации не найдены';
       return;
     }
 
-    mixer = new THREE.AnimationMixer(obj3D);
-    animations.forEach((clip) => {
+    console.log("SkinnedMesh найден:", skinned);
+    console.log("Анимации:", skinned.animations);
+
+    const mixer = new THREE.AnimationMixer(skinned);
+    skinned.animations.forEach((clip) => {
       const action = mixer.clipAction(clip);
       action.setLoop(THREE.LoopRepeat);
       action.play();
     });
 
-    status.textContent = '▶️ Анимации запущены: ' + animations.map(a => a.name).join(', ');
+    wrapper.mixer = mixer;
+    status.textContent = '▶️ Анимации запущены: ' + skinned.animations.map(a => a.name).join(', ');
   });
 
-  // Сглаживание позиции/ротации
+  // Сглаживание позиции/ротации и обновление анимации
   const prevPos = new THREE.Vector3();
   const prevRot = new THREE.Euler();
 
   scene.addEventListener('tick', (ev) => {
-    if (mixer) mixer.update(ev.detail.delta / 1000);
+    if (wrapper.mixer) wrapper.mixer.update(ev.detail.delta / 1000);
 
     const obj = wrapper.object3D;
     if(obj){
@@ -129,6 +141,7 @@ startBtn.addEventListener('click', () => {
       console.error(e);
     }
   });
+
 });
 </script>
 
