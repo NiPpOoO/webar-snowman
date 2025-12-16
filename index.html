@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 97</title>
+<title>WebAR — 98</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -68,24 +68,33 @@ startBtn.addEventListener('click', () => {
 
   let mixer = null;
 
-  // Исправленная функция поиска SkinnedMesh
-  function findSkinnedMesh(obj){
-    if(!obj) return null;
-    if(obj.type === "SkinnedMesh") return obj;
-    for(const child of obj.children || []){
-      const res = findSkinnedMesh(child);
-      if(res) return res;
-    }
-    return null;
-  }
-
   model.addEventListener('model-loaded', (e) => {
-    const root = e.detail.model.object3D;
+    const entity = e.target;
+
+    // Получаем root object3D
+    const root = entity.getObject3D('model') || entity.getObject3D('mesh');
     console.log("Mesh root:", root);
+
+    if(!root){
+      status.textContent = '❌ object3D не найден';
+      console.warn("object3D пустой");
+      return;
+    }
+
+    // Рекурсивная функция поиска SkinnedMesh с анимациями
+    function findSkinnedMesh(obj){
+      if(!obj) return null;
+      if(obj.type === "SkinnedMesh") return obj;
+      for(const child of obj.children || []){
+        const res = findSkinnedMesh(child);
+        if(res) return res;
+      }
+      return null;
+    }
 
     const skinnedMesh = findSkinnedMesh(root);
     if(!skinnedMesh){
-      status.textContent = '❌ SkinnedMesh с анимациями не найден';
+      status.textContent = '❌ SkinnedMesh не найден';
       console.warn("SkinnedMesh не найден");
       return;
     }
