@@ -2,14 +2,11 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 122</title>
+<title>WebAR — 124</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
-
-<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
@@ -21,122 +18,125 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   z-index:10;
 }
 #start button {
-  padding:16px 26px; font-size:16px;
-  border-radius:10px; border:none;
+  padding:16px 26px; font-size:16px; border-radius:10px; border:none;
 }
 #status {
   position:fixed; bottom:12px; left:50%;
   transform:translateX(-50%);
-  background:rgba(0,0,0,.6);
-  color:#fff; padding:8px 12px;
-  border-radius:6px; z-index:11;
-  display:none;
+  background:rgba(0,0,0,.6); color:#fff;
+  padding:8px 12px; border-radius:6px;
+  z-index:11; display:none;
 }
 </style>
 </head>
-<body>
 
+<body>
 <div id="start">
   <button id="startBtn">Запустить AR</button>
 </div>
 <div id="status">Наведи камеру на маркер</div>
 
+<a-scene
+  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart: false;"
+  vr-mode-ui="enabled:false"
+  device-orientation-permission-ui="enabled:false"
+  renderer="alpha:true">
+
+  <a-camera look-controls="enabled:false"></a-camera>
+
+  <!-- Музыка -->
+  <a-sound id="background-music" src="https://nippooo.github.io/webar-snowman/assets/music.mp3" autoplay="false" loop="true" volume="0.5"></a-sound>
+
+  <!-- 6 маркеров -->
+  <a-entity mindar-image-target="targetIndex:0" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:1" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:2" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:3" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:4" class="marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:5" class="marker"></a-entity>
+
+</a-scene>
+
 <script>
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
+const scene = document.querySelector('a-scene');
+const markers = document.querySelectorAll('.marker');
 
-startBtn.addEventListener('click', async () => {
-  startBtn.disabled = true;
-  startScreen.style.display = 'none';
-  status.style.display = 'block';
+// Создаём контейнер с моделями
+const content = document.createElement('a-entity');
+content.setAttribute('id','content-root');
 
-  // Создаем сцену
-  const scene = document.createElement('a-scene');
-  scene.setAttribute('mindar-image', 'imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;');
-  scene.setAttribute('vr-mode-ui', 'enabled:false');
-  scene.setAttribute('device-orientation-permission-ui', 'enabled:false');
-  scene.setAttribute('renderer', 'alpha:true');
-  document.body.appendChild(scene);
+// Снеговик слева
+const snowman = document.createElement('a-entity');
+snowman.setAttribute('position','-0.3 -0.3 0');
+const foxModel = document.createElement('a-entity');
+foxModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
+foxModel.setAttribute('scale','0.3 0.3 0.3');
+foxModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+snowman.appendChild(foxModel);
+content.appendChild(snowman);
 
-  // Камера
-  const camera = document.createElement('a-camera');
-  camera.setAttribute('look-controls', 'enabled:false');
-  scene.appendChild(camera);
+// Вторая модель справа
+const rightModel = document.createElement('a-entity');
+rightModel.setAttribute('position','0.3 -0.3 0');
+const foxModel2 = document.createElement('a-entity');
+foxModel2.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
+foxModel2.setAttribute('scale','0.25 0.25 0.25');
+foxModel2.setAttribute('animation-mixer','clip:*; loop:repeat');
+rightModel.appendChild(foxModel2);
+content.appendChild(rightModel);
 
-  // Контейнер контента (анимации)
-  const content = document.createElement('a-entity');
-  content.setAttribute('id','content-root');
-  scene.appendChild(content);
+content.setAttribute('visible','false');
+scene.appendChild(content);
 
-  // Левая модель
-  const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position','-0.3 -0.3 0');
-  const leftModel = document.createElement('a-entity');
-  leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  leftModel.setAttribute('scale','0.3 0.3 0.3');
-  leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  leftWrapper.appendChild(leftModel);
-  content.appendChild(leftWrapper);
+let activeMarker = null;
 
-  // Правая модель
-  const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position','0.3 -0.3 0');
-  const rightModel = document.createElement('a-entity');
-  rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  rightModel.setAttribute('scale','0.25 0.25 0.25');
-  rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  rightWrapper.appendChild(rightModel);
-  content.appendChild(rightWrapper);
-
-  // Музыка
-  const music = document.createElement('a-entity');
-  music.setAttribute('sound','src: url(https://nippooo.github.io/webar-snowman/assets/music/music.mp3); autoplay: true; loop: true; volume:0.5');
-  content.appendChild(music);
-
-  // 6 маркеров
-  const markers = [];
-  for(let i=0;i<6;i++){
-    const m = document.createElement('a-entity');
-    m.setAttribute('mindar-image-target', `targetIndex:${i}`);
-    scene.appendChild(m);
-    markers.push(m);
+// Плавное следование за активным маркером
+AFRAME.registerComponent('smooth-follow', {
+  tick() {
+    if (!activeMarker) return;
+    const src = activeMarker.object3D;
+    const dst = content.object3D;
+    dst.position.lerp(src.position, 0.15);
+    dst.quaternion.slerp(src.quaternion, 0.15);
   }
+});
+content.setAttribute('smooth-follow','');
 
-  let activeMarker = null;
-
-  // Плавное следование
-  AFRAME.registerComponent('smooth-follow', {
-    tick() {
-      if(!activeMarker) return;
-      const src = activeMarker.object3D;
-      const dst = content.object3D;
-      dst.position.lerp(src.position,0.15);
-      dst.quaternion.slerp(src.quaternion,0.15);
-    }
-  });
-  content.setAttribute('smooth-follow','');
-
-  // События маркеров
-  markers.forEach(marker=>{
-    marker.addEventListener('targetFound', ()=>{
-      activeMarker = marker;
-      content.setAttribute('visible','true');
-      status.textContent = 'Маркер найден';
-    });
-    marker.addEventListener('targetLost', ()=>{
-      setTimeout(()=>{
-        if(activeMarker===marker){
-          activeMarker = null;
-          content.setAttribute('visible','false');
-          status.textContent = 'Наведи камеру на маркер';
-        }
-      },200);
-    });
+// Привязываем контент к маркерам
+markers.forEach(marker=>{
+  marker.addEventListener('targetFound', ()=>{
+    activeMarker = marker;
+    content.setAttribute('visible', true);
+    status.textContent='Маркер найден';
+    const music = document.querySelector('#background-music');
+    music.components.sound.playSound();
   });
 
-  // Старт MindAR
-  await scene.systems['mindar-image-system'].start();
+  marker.addEventListener('targetLost', ()=>{
+    setTimeout(()=>{
+      if(activeMarker===marker){
+        activeMarker=null;
+        content.setAttribute('visible', false);
+        status.textContent='Наведи камеру на маркер';
+      }
+    },200);
+  });
+});
+
+// Старт AR
+startBtn.addEventListener('click', async ()=>{
+  startScreen.style.display='none';
+  status.style.display='block';
+  try{
+    await scene.systems['mindar-image-system'].start();
+    console.log('MindAR запущен');
+  }catch(e){
+    alert('Камера недоступна или отказано в доступе.');
+    console.error(e);
+  }
 });
 </script>
 
