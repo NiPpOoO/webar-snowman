@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 82</title>
+<title>WebAR — 83</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -49,23 +49,26 @@ startBtn.addEventListener('click', () => {
   camera.setAttribute('look-controls', 'enabled:false');
   scene.appendChild(camera);
 
-  // Target и модель Fox
+  // Создаем фиксированный якорь для модели
+  const worldAnchor = document.createElement('a-entity');
+  scene.appendChild(worldAnchor);
+
+  // Target маркера
   const target = document.createElement('a-entity');
   target.setAttribute('mindar-image-target', 'targetIndex:0');
+  scene.appendChild(target);
 
+  // Модель Fox
   const model = document.createElement('a-entity');
   model.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   model.setAttribute('scale', '0.3 0.3 0.3');
   model.setAttribute('position', '-0.3 -0.3 0');
-
-  target.appendChild(model);
-  scene.appendChild(target);
+  worldAnchor.appendChild(model);
 
   // Запуск анимации через THREE.AnimationMixer
   model.addEventListener('model-loaded', (e) => {
     const mesh = e.detail.model;
 
-    // Рекурсивный поиск объекта с анимациями
     function findAnimations(obj) {
       if (obj.animations && obj.animations.length > 0) return obj;
       for (let child of obj.children) {
@@ -82,7 +85,7 @@ startBtn.addEventListener('click', () => {
     }
 
     const mixer = new THREE.AnimationMixer(animObject);
-    const clip = animObject.animations[0]; // берем первую анимацию
+    const clip = animObject.animations[0]; // берём первую анимацию
     const action = mixer.clipAction(clip);
     action.setLoop(THREE.LoopRepeat);
     action.play();
@@ -93,6 +96,18 @@ startBtn.addEventListener('click', () => {
     });
 
     status.textContent = '▶️ Анимация запущена: ' + clip.name;
+  });
+
+  // Обновляем позицию и ориентацию модели при обнаружении маркера
+  target.addEventListener('targetFound', () => {
+    status.textContent = 'Маркер найден';
+    const markerObj = target.object3D;
+    worldAnchor.object3D.position.copy(markerObj.position);
+    worldAnchor.object3D.quaternion.copy(markerObj.quaternion);
+  });
+
+  target.addEventListener('targetLost', () => {
+    status.textContent = 'Наведи камеру на маркер';
   });
 
   // После загрузки сцены стартуем MindAR
@@ -106,11 +121,6 @@ startBtn.addEventListener('click', () => {
     try {
       await mindarSystem.start();
       console.log('MindAR запущен');
-
-      // UI feedback
-      target.addEventListener('targetFound', () => status.textContent = 'Маркер найден');
-      target.addEventListener('targetLost', () => status.textContent = 'Наведи камеру на маркер');
-
     } catch (e) {
       alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
       console.error(e);
