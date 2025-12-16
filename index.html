@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Stable</title>
+<title>WebAR — Optimized</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -27,17 +27,17 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 </div>
 <div id="status">Наведи камеру на маркер</div>
 
-<a-scene mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false; filterMinCF:0.0005; filterBeta:5;" vr-mode-ui="enabled:false" device-orientation-permission-ui="enabled:false" renderer="alpha:true">
+<a-scene mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false; filterMinCF:0.0003; filterBeta:3;" vr-mode-ui="enabled:false" device-orientation-permission-ui="enabled:false" renderer="alpha:true">
   <a-camera look-controls="enabled:false"></a-camera>
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
 </a-scene>
 
 <script>
-// ===== Сглаживание =====
-AFRAME.registerComponent('smooth-follow', {
-  schema: { lerpPos: {default:0.08}, lerpRot: {default:0.08} },
+// ===== Сильное сглаживание =====
+AFRAME.registerComponent('super-smooth', {
+  schema: { lerpPos: {default:0.03}, lerpRot: {default:0.03} }, // очень медленно подстраиваемся
   tick() {
-    const marker = this.el.parentEl; // привязка к маркеру
+    const marker = this.el.parentEl;
     if (!marker) return;
     const src = marker.object3D;
     const dst = this.el.object3D;
@@ -59,13 +59,12 @@ function createMarker(index) {
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контейнер моделей внутри маркера
   const content = document.createElement('a-entity');
 
-  // Левая модель
+  // Левая модель (сдвинута сильнее влево и ниже)
   const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position','-0.5 -0.5 0');
-  leftWrapper.setAttribute('smooth-follow','');
+  leftWrapper.setAttribute('position','-0.8 -0.7 0');
+  leftWrapper.setAttribute('super-smooth','');
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
@@ -73,10 +72,10 @@ function createMarker(index) {
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
 
-  // Правая модель
+  // Правая модель (сдвинута сильнее вправо и ниже)
   const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position','0.5 -0.5 0');
-  rightWrapper.setAttribute('smooth-follow','');
+  rightWrapper.setAttribute('position','0.8 -0.7 0');
+  rightWrapper.setAttribute('super-smooth','');
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
