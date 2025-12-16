@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 11</title>
+<title>WebAR — 1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -77,7 +77,7 @@ function createMarker(index) {
   leftWrapper.setAttribute('position','-0.5 -0.5 0');
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  leftModel.setAttribute('scale','0.3 0.3 0.3');
+  leftModel.setAttribute('scale','0.1 0.1 0.1');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
@@ -87,7 +87,7 @@ function createMarker(index) {
   rightWrapper.setAttribute('position','0.5 -0.5 0');
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  rightModel.setAttribute('scale','0.3 0.3 0.3');
+  rightModel.setAttribute('scale','0.1 0.1 0.1');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
