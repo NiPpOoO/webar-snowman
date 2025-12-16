@@ -2,85 +2,54 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 104</title>
+<title>MindAR — 105</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
+<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+<!-- A-Frame Extras (animation-mixer !!!) -->
+<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
-#start { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10; background:#000; }
-#start button { padding:16px 26px; font-size:16px; border-radius:10px; border:none; }
-#status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background: rgba(0,0,0,0.65); color:#fff; padding:8px 12px; border-radius:6px; font-size:14px; z-index:11; display:none; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
 </style>
 </head>
 
 <body>
 
-<div id="start">
-  <button id="startBtn">Запустить AR</button>
-</div>
-<div id="status">Наведи камеру на маркер</div>
+<a-scene
+  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind;"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+  renderer="alpha: true">
 
-<script>
-const startBtn = document.getElementById('startBtn');
-const startScreen = document.getElementById('start');
-const status = document.getElementById('status');
+  <a-camera look-controls="enabled: false"></a-camera>
 
-startBtn.addEventListener('click', () => {
-  startBtn.disabled = true;
-  startScreen.style.display = 'none';
-  status.style.display = 'block';
+  <a-entity mindar-image-target="targetIndex: 0">
 
-  const scene = document.createElement('a-scene');
-  scene.setAttribute(
-    'mindar-image',
-    'imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;'
-  );
-  scene.setAttribute('vr-mode-ui', 'enabled:false');
-  scene.setAttribute('renderer', 'alpha:true');
-  document.body.appendChild(scene);
+    <a-entity position="-0.3 -0.3 0">
 
-  const camera = document.createElement('a-camera');
-  camera.setAttribute('look-controls', 'enabled:false');
-  scene.appendChild(camera);
+      <a-entity
+        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+        scale="0.3 0.3 0.3"
+        animation-mixer="clip: *; loop: repeat">
+      </a-entity>
 
-  const target = document.createElement('a-entity');
-  target.setAttribute('mindar-image-target', 'targetIndex:0');
+    </a-entity>
 
-  const wrapper = document.createElement('a-entity');
-  wrapper.setAttribute('position', '-0.3 -0.3 0');
+  </a-entity>
 
-  const model = document.createElement('a-entity');
-  model.setAttribute(
-    'gltf-model',
-    'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb'
-  );
-  model.setAttribute('scale', '0.3 0.3 0.3');
-
-  // 🔥 ВОТ ГДЕ ВКЛЮЧАЕТСЯ АНИМАЦИЯ
-  model.setAttribute('animation-mixer', 'clip: *; loop: repeat');
-
-  wrapper.appendChild(model);
-  target.appendChild(wrapper);
-  scene.appendChild(target);
-
-  scene.addEventListener('loaded', async () => {
-    const mindarSystem = scene.systems['mindar-image-system'];
-    await mindarSystem.start();
-
-    target.addEventListener('targetFound', () => {
-      status.textContent = 'Маркер найден';
-    });
-
-    target.addEventListener('targetLost', () => {
-      status.textContent = 'Наведи камеру на маркер';
-    });
-  });
-});
-</script>
+</a-scene>
 
 </body>
 </html>
