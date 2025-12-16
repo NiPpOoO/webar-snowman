@@ -72,7 +72,7 @@ AFRAME.registerComponent('smooth-follow', {
     if (!activeMarker) return;
     const src = activeMarker.object3D;
     const dst = contentRoot.object3D;
-    dst.position.lerp(src.position, 0.15);
+    dst.position.lerp(src.position, 0.03);
     dst.quaternion.slerp(src.quaternion, 0.15);
   }
 });
