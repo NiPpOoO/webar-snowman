@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Stable MultiMarker</title>
+<title>WebAR — 1Stable MultiMarker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -66,16 +66,6 @@ scene.appendChild(contentRoot);
 contentRoot.setAttribute('smooth-follow','');
 contentRoot.setAttribute('visible','false');
 
-// Smooth follow component
-AFRAME.registerComponent('smooth-follow', {
-  tick() {
-    if (!activeMarker) return;
-    const src = activeMarker.object3D;
-    const dst = contentRoot.object3D;
-    dst.position.lerp(src.position, 0.03);
-    dst.quaternion.slerp(src.quaternion, 0.15);
-  }
-});
 
 // Функция создания маркера с контентом
 function createMarker(index) {
