@@ -5,8 +5,11 @@
 <title>WebAR — Stable MultiMarker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<!-- A-Frame (через jsDelivr, работает без VPN) -->
+<script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
@@ -20,6 +23,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #start button {
   padding:16px 26px; font-size:16px;
   border-radius:10px; border:none;
+  cursor:pointer;
 }
 #status {
   position:fixed; bottom:12px; left:50%;
@@ -60,7 +64,7 @@ const scene = document.querySelector('a-scene');
 const markersCount = 6;
 let activeMarker = null;
 
-// Создаем общий контейнер контента
+// Общий контейнер
 const contentRoot = document.createElement('a-entity');
 scene.appendChild(contentRoot);
 contentRoot.setAttribute('smooth-follow','');
@@ -77,17 +81,14 @@ AFRAME.registerComponent('smooth-follow', {
   }
 });
 
-// Функция создания маркера с контентом
+// Функция создания маркера
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контент (снеговик + второй персонаж)
   const content = document.createElement('a-entity');
-  content.setAttribute('position','0 0 0');
 
-  // Снеговик
   const snowmanWrapper = document.createElement('a-entity');
   snowmanWrapper.setAttribute('position','-0.3 -0.3 0');
   const snowmanModel = document.createElement('a-entity');
@@ -97,7 +98,6 @@ function createMarker(index) {
   snowmanWrapper.appendChild(snowmanModel);
   content.appendChild(snowmanWrapper);
 
-  // Вторая модель справа
   const secondWrapper = document.createElement('a-entity');
   secondWrapper.setAttribute('position','0.3 -0.3 0');
   const secondModel = document.createElement('a-entity');
@@ -133,20 +133,24 @@ for(let i=0;i<markersCount;i++){
   createMarker(i);
 }
 
-// Старт AR по клику (работает на Android)
-startBtn.addEventListener('click', async ()=>{
-  document.getElementById('start').style.display='none';
-  status.style.display='block';
-  try {
-    const mindar = scene.systems['mindar-image-system'];
-    await mindar.start();
-    // Запуск музыки
-    const music = document.getElementById('music');
-    music.components.sound.playSound();
-  } catch(e){
-    alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
-    console.error(e);
-  }
+// Старт AR по клику/тапу
+['click','touchstart'].forEach(evt => {
+  startBtn.addEventListener(evt, () => {
+    document.getElementById('start').style.display='none';
+    status.style.display='block';
+    try {
+      const mindar = scene.systems['mindar-image-system'];
+      mindar.start(); // синхронный вызов
+      console.log('✅ MindAR запущен');
+      const music = document.getElementById('music');
+      if (music && music.components.sound) {
+        music.components.sound.playSound();
+      }
+    } catch(e){
+      alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
+      console.error(e);
+    }
+  }, {once:true});
 });
 </script>
 
