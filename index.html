@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 11</title>
+<title>WebAR — 1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -34,7 +34,6 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 }
 </style>
 </head>
-
 <body>
 
 <div id="start">
@@ -43,41 +42,19 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 <div id="status">Наведи камеру на маркер</div>
 
 <a-scene
-  mindar-image="
-    imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind;
-    autoStart:false;
-    filterMinCF:0.001;
-    filterBeta:10;
-  "
+  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
   vr-mode-ui="enabled:false"
   device-orientation-permission-ui="enabled:false"
   renderer="alpha:true">
 
   <a-camera look-controls="enabled:false"></a-camera>
 
-  <a-entity id="music"
-    sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3);
-           autoplay:false; loop:true; volume:0.5">
-  </a-entity>
+  <!-- Музыка -->
+  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
 
 </a-scene>
 
-
 <script>
-/* ===== СГЛАЖИВАНИЕ (УБИРАЕМ ДРОЖЬ) ===== */
-AFRAME.registerComponent('smooth-follow', {
-  tick() {
-    const marker = document.querySelector('[data-active-marker]');
-    if (!marker) return;
-
-    const src = marker.object3D;
-    const dst = this.el.object3D;
-
-    dst.position.lerp(src.position, 0.15);
-    dst.quaternion.slerp(src.quaternion, 0.15);
-  }
-});
-
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
@@ -85,86 +62,70 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
-/* ===== ОБЩИЙ КОНТЕЙНЕР КОНТЕНТА ===== */
-const contentRoot = document.createElement('a-entity');
-contentRoot.setAttribute('smooth-follow','');
-contentRoot.setAttribute('visible','false');
-scene.appendChild(contentRoot);
-
-/* ===== СОЗДАНИЕ МАРКЕРОВ ===== */
+// Функция создания маркера с моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
+  // Контейнер моделей
+  const content = document.createElement('a-entity');
+  content.setAttribute('position','0 0 0');
+
+  // Модель слев
+  const leftWrapper = document.createElement('a-entity');
+  leftWrapper.setAttribute('position','-0.5 -0.5 0');
+  const leftModel = document.createElement('a-entity');
+  leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
+  leftModel.setAttribute('scale','0.05 0.05 0.05');
+  leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  leftWrapper.appendChild(leftModel);
+  content.appendChild(leftWrapper);
+
+  // Модель справа
+  const rightWrapper = document.createElement('a-entity');
+  rightWrapper.setAttribute('position','0.5 -0.5 0');
+  const rightModel = document.createElement('a-entity');
+  rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
+  rightModel.setAttribute('scale','0.05 0.05 0.05');
+  rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  rightWrapper.appendChild(rightModel);
+  content.appendChild(rightWrapper);
+
+  marker.appendChild(content);
+
   marker.addEventListener('targetFound', ()=>{
-    document.querySelectorAll('[data-active-marker]')
-      .forEach(m => m.removeAttribute('data-active-marker'));
-
-      marker.setAttribute('data-active-marker','true');
-
-      marker.appendChild(contentRoot);   // 🔥 ВАЖНО
-contentRoot.setAttribute('position','0 0 0');
-contentRoot.setAttribute('visible', true);
-
+    content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
   });
 
   marker.addEventListener('targetLost', ()=>{
     setTimeout(()=>{
-      if (marker.hasAttribute('data-active-marker')) {
-        marker.removeAttribute('data-active-marker');
-        contentRoot.setAttribute('visible', false);
-        scene.appendChild(contentRoot); // возвращаем в сцену
-
-        status.textContent = 'Наведи камеру на маркер';
-      }
+      content.setAttribute('visible', false);
+      status.textContent = 'Наведи камеру на маркер';
     },200);
   });
+
+  return marker;
 }
 
-/* ===== СОЗДАЁМ ВСЕ МАРКЕРЫ ===== */
+// Создаем маркеры
 for(let i=0;i<markersCount;i++){
   createMarker(i);
 }
 
-/* ===== МОДЕЛИ (ОДИН РАЗ!) ===== */
-
-// Левая модель
-const leftWrapper = document.createElement('a-entity');
-leftWrapper.setAttribute('position','-0.5 -0.5 0');
-const leftModel = document.createElement('a-entity');
-leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-leftModel.setAttribute('scale','0.05 0.05 0.05');
-leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-leftWrapper.appendChild(leftModel);
-contentRoot.appendChild(leftWrapper);
-
-// Правая модель
-const rightWrapper = document.createElement('a-entity');
-rightWrapper.setAttribute('position','0.5 -0.5 0');
-const rightModel = document.createElement('a-entity');
-rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-rightModel.setAttribute('scale','0.05 0.05 0.05');
-rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-rightWrapper.appendChild(rightModel);
-contentRoot.appendChild(rightWrapper);
-
-/* ===== СТАРТ AR (ANDROID SAFE) ===== */
+// Старт AR и музыки по кнопке
 startBtn.addEventListener('click', async ()=>{
   startBtn.disabled = true;
   startScreen.style.display='none';
   status.style.display='block';
-
   try {
     const mindar = scene.systems['mindar-image-system'];
     await mindar.start();
-
-    document.getElementById('music')
-      .components.sound.playSound();
-
+    const music = document.getElementById('music');
+    music.components.sound.playSound();
   } catch(e){
-    alert('Нет доступа к камере');
+    alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
     console.error(e);
   }
 });
