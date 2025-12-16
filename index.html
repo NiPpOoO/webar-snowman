@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Stable MultiMarker</title>
+<title>WebAR — 1Stable MultiMarker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame (через jsDelivr, работает без VPN) -->
@@ -61,7 +61,7 @@ const startBtn = document.getElementById('startBtn');
 const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
 
-const markersCount = 6;
+const markersCount = 6; // количество картинок в .mind
 let activeMarker = null;
 
 // Общий контейнер
@@ -112,7 +112,7 @@ function createMarker(index) {
   marker.addEventListener('targetFound', ()=>{
     activeMarker = marker;
     contentRoot.setAttribute('visible', true);
-    status.textContent = 'Маркер найден';
+    status.textContent = `Маркер ${index} найден`;
   });
 
   marker.addEventListener('targetLost', ()=>{
