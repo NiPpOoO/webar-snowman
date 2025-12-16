@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1111Stable</title>
+<title>WebAR — 1Stable</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
@@ -53,27 +53,28 @@ function createMarker(index) {
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Левая модель
-  const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position','-0.6 -0.4 0'); // сдвинута влево и ниже
-  leftWrapper.setAttribute('super-smooth','');
-  const leftModel = document.createElement('a-entity');
-  leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  leftModel.setAttribute('scale','0.05 0.05 0.05');
-  leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  leftWrapper.appendChild(leftModel);
-  marker.appendChild(leftWrapper);
+// Левая модель
+const leftWrapper = document.createElement('a-entity');
+leftWrapper.setAttribute('position','-0.6 -0.4 0'); // смещаем относительно маркера
+leftWrapper.setAttribute('super-smooth','lerpPos:0.02; lerpRot:0.02');
+const leftModel = document.createElement('a-entity');
+leftModel.setAttribute('gltf-model','...Fox.glb...');
+leftModel.setAttribute('scale','0.05 0.05 0.05');
+leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+leftWrapper.appendChild(leftModel);
+marker.appendChild(leftWrapper);
 
-  // Правая модель
-  const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position','0.6 -0.4 0'); // сдвинута вправо и ниже
-  rightWrapper.setAttribute('super-smooth','');
-  const rightModel = document.createElement('a-entity');
-  rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  rightModel.setAttribute('scale','0.05 0.05 0.05');
-  rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  rightWrapper.appendChild(rightModel);
-  marker.appendChild(rightWrapper);
+// Правая модель
+const rightWrapper = document.createElement('a-entity');
+rightWrapper.setAttribute('position','0.6 -0.4 0'); // смещаем вправо
+rightWrapper.setAttribute('super-smooth','lerpPos:0.02; lerpRot:0.02');
+const rightModel = document.createElement('a-entity');
+rightModel.setAttribute('gltf-model','...Fox1.glb...');
+rightModel.setAttribute('scale','0.05 0.05 0.05');
+rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+rightWrapper.appendChild(rightModel);
+marker.appendChild(rightWrapper);
+
 
   // Изначально скрываем
   leftWrapper.setAttribute('visible', false);
