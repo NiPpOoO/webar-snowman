@@ -62,6 +62,17 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
+
+AFRAME.registerComponent('smooth-follow', {
+  tick() {
+    if (!activeMarker) return;
+    const src = activeMarker.object3D;
+    const dst = contentRoot.object3D;
+    dst.position.lerp(src.position, 0.03); // очень медленно
+    dst.quaternion.slerp(src.quaternion, 0.03);
+  }
+});
+
 // Функция создания маркера с моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
