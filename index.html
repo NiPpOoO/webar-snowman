@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 91 Debug</title>
+<title>WebAR — 92</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -69,27 +69,31 @@ startBtn.addEventListener('click', () => {
   let mixer = null;
 
   model.addEventListener('model-loaded', (e) => {
-    const gltf = e.detail.gltf; // Берём GLTF напрямую
-    console.log("GLTF объект:", gltf);
-    console.log("Анимации в GLTF:", gltf.animations);
-
-    if (!gltf || !gltf.animations || gltf.animations.length === 0) {
-      status.textContent = '❌ Анимации не найдены';
-      console.warn("Анимации отсутствуют в GLTF");
+    const entity = e.target;
+    const obj3D = entity.getObject3D('mesh');
+    if (!obj3D) {
+      console.warn("object3D 'mesh' ещё не готов");
+      status.textContent = '❌ object3D не готов';
       return;
     }
 
-    // Создаём миксер на wrapper.object3D
-    mixer = new THREE.AnimationMixer(wrapper.object3D);
+    const animations = obj3D.animations;
+    console.log("Animations:", animations);
 
-    gltf.animations.forEach((clip, index) => {
-      console.log(`Запуск анимации ${index}:`, clip.name);
+    if (!animations || animations.length === 0) {
+      console.warn("Анимации не найдены");
+      status.textContent = '❌ Анимации не найдены';
+      return;
+    }
+
+    mixer = new THREE.AnimationMixer(obj3D);
+    animations.forEach((clip) => {
       const action = mixer.clipAction(clip);
       action.setLoop(THREE.LoopRepeat);
       action.play();
     });
 
-    status.textContent = '▶️ Анимации запущены: ' + gltf.animations.map(a => a.name).join(', ');
+    status.textContent = '▶️ Анимации запущены: ' + animations.map(a => a.name).join(', ');
   });
 
   // Сглаживание позиции/ротации
@@ -97,7 +101,7 @@ startBtn.addEventListener('click', () => {
   const prevRot = new THREE.Euler();
 
   scene.addEventListener('tick', (ev) => {
-    if(mixer) mixer.update(ev.detail.delta / 1000);
+    if (mixer) mixer.update(ev.detail.delta / 1000);
 
     const obj = wrapper.object3D;
     if(obj){
@@ -125,7 +129,6 @@ startBtn.addEventListener('click', () => {
       console.error(e);
     }
   });
-
 });
 </script>
 
