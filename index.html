@@ -2,12 +2,14 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1111Stable</title>
+<title>WebAR — Stable</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+
 <style>
 html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #start { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:10; }
@@ -28,9 +30,9 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 </a-scene>
 
 <script>
-// ===== Сглаживание =====
+// ===== Сглаживание движения =====
 AFRAME.registerComponent('super-smooth', {
-  schema: { lerpPos: {default:0.03}, lerpRot: {default:0.03} },
+  schema: { lerpPos: {default:0.02}, lerpRot: {default:0.02} },
   tick() {
     const marker = this.el.parentEl;
     if (!marker) return;
@@ -45,70 +47,54 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
+
 const markersCount = 6;
 
-// ===== Создаем маркеры с моделями =====
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-// Левая модель
-const leftWrapper = document.createElement('a-entity');
-leftWrapper.setAttribute('position','-0.6 -0.4 0'); // смещаем относительно маркера
-leftWrapper.setAttribute('super-smooth','lerpPos:0.02; lerpRot:0.02');
-const leftModel = document.createElement('a-entity');
-leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-leftModel.setAttribute('scale','0.05 0.05 0.05');
-leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-leftWrapper.appendChild(leftModel);
-marker.appendChild(leftWrapper);
+  // Левая модель
+  const leftWrapper = document.createElement('a-entity');
+  leftWrapper.setAttribute('position','-0.6 -0.4 0'); // смещаем влево и ниже
+  leftWrapper.setAttribute('super-smooth','');
+  const leftModel = document.createElement('a-entity');
+  leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
+  leftModel.setAttribute('scale','0.05 0.05 0.05');
+  leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  leftWrapper.appendChild(leftModel);
+  marker.appendChild(leftWrapper);
 
-// Правая модель
-const rightWrapper = document.createElement('a-entity');
-rightWrapper.setAttribute('position','0.6 -0.4 0'); // смещаем вправо
-rightWrapper.setAttribute('super-smooth','lerpPos:0.02; lerpRot:0.02');
-const rightModel = document.createElement('a-entity');
-rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-rightModel.setAttribute('scale','0.05 0.05 0.05');
-rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-rightWrapper.appendChild(rightModel);
-marker.appendChild(rightWrapper);
+  // Правая модель
+  const rightWrapper = document.createElement('a-entity');
+  rightWrapper.setAttribute('position','0.6 -0.4 0'); // смещаем вправо и ниже
+  rightWrapper.setAttribute('super-smooth','');
+  const rightModel = document.createElement('a-entity');
+  rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
+  rightModel.setAttribute('scale','0.05 0.05 0.05');
+  rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  rightWrapper.appendChild(rightModel);
+  marker.appendChild(rightWrapper);
 
-
-  // Изначально скрываем
-  leftWrapper.setAttribute('visible', false);
-  rightWrapper.setAttribute('visible', false);
-
-  // События для показа/скрытия
-  marker.addEventListener('targetFound', ()=> {
-    leftWrapper.setAttribute('visible', true);
-    rightWrapper.setAttribute('visible', true);
-    status.textContent = 'Маркер найден';
-  });
-
-  marker.addEventListener('targetLost', ()=> {
-    setTimeout(()=>{
-      leftWrapper.setAttribute('visible', false);
-      rightWrapper.setAttribute('visible', false);
-      status.textContent = 'Наведи камеру на маркер';
-    },200);
-  });
+  marker.addEventListener('targetFound', ()=> { status.textContent = 'Маркер найден'; });
+  marker.addEventListener('targetLost', ()=> { setTimeout(()=>{ status.textContent = 'Наведи камеру на маркер'; },200); });
 }
 
-// Создаем все маркеры
-for(let i=0;i<markersCount;i++) createMarker(i);
+// Создаём все маркеры
+for(let i=0; i<markersCount; i++) createMarker(i);
 
 // ===== Старт AR =====
-startBtn.addEventListener('click', async ()=>{
+startBtn.addEventListener('click', async ()=> {
   startBtn.disabled = true;
   startScreen.style.display='none';
   status.style.display='block';
+
   try {
     const mindar = scene.systems['mindar-image-system'];
     await mindar.start();
     document.getElementById('music').components.sound.playSound();
-  } catch(e){
+  } catch(e) {
     alert('Нет доступа к камере');
     console.error(e);
   }
