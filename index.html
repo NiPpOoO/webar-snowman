@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 89 Debug</title>
+<title>WebAR — 90</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -36,29 +36,24 @@ startBtn.addEventListener('click', () => {
   startScreen.style.display = 'none';
   status.style.display = 'block';
 
-  // Создаём сцену
   const scene = document.createElement('a-scene');
   scene.setAttribute('mindar-image', 'imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;');
   scene.setAttribute('vr-mode-ui', 'enabled:false');
   scene.setAttribute('renderer', 'alpha:true');
   document.body.appendChild(scene);
 
-  // Камера
   const camera = document.createElement('a-camera');
   camera.setAttribute('look-controls', 'enabled:false');
   scene.appendChild(camera);
 
-  // Target
   const target = document.createElement('a-entity');
   target.setAttribute('mindar-image-target', 'targetIndex:0');
 
-  // Обёртка для модели
   const wrapper = document.createElement('a-entity');
   wrapper.setAttribute('id','wrapper');
   wrapper.setAttribute('position','-0.3 -0.3 0');
   wrapper.setAttribute('rotation','0 0 0');
 
-  // Модель
   const model = document.createElement('a-entity');
   model.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   model.setAttribute('scale','0.3 0.3 0.3');
@@ -69,37 +64,39 @@ startBtn.addEventListener('click', () => {
   let mixer = null;
 
   model.addEventListener('model-loaded', (e) => {
-    const mesh = e.detail.model;
-    console.log("Model loaded:", mesh);
+    const rootObj = e.detail.model.object3D;
+    console.log("Root object3D:", rootObj);
 
-    // Попробуем получить gltf через A-Frame объект
-    const obj3D = mesh.object3D;
-    console.log("object3D:", obj3D);
+    // Рекурсивная функция поиска объекта с анимациями
+    function findAnimations(obj){
+      if(obj.animations && obj.animations.length > 0) return obj;
+      for(const child of obj.children){
+        const res = findAnimations(child);
+        if(res) return res;
+      }
+      return null;
+    }
 
-    const gltf = mesh.el.getObject3D('mesh')?.gltf;
-    if(!gltf){
-      console.warn("GLTF объект не найден на mesh");
-      status.textContent = '❌ GLTF не найден';
+    const animObject = findAnimations(rootObj);
+    if(!animObject){
+      status.textContent = '❌ Анимации не найдены';
+      console.warn("Анимации не найдены внутри модели");
       return;
     }
 
-    console.log("GLTF объект:", gltf);
-    console.log("Анимации в GLTF:", gltf.animations);
+    console.log("Анимационный объект найден:", animObject);
+    console.log("Анимации:", animObject.animations);
 
-    if(!gltf.animations || gltf.animations.length === 0){
-      status.textContent = '❌ Анимации не найдено';
-      return;
-    }
-
-    mixer = new THREE.AnimationMixer(obj3D);
-    gltf.animations.forEach((clip, index) => {
+    // Создаём миксер и запускаем все анимации
+    mixer = new THREE.AnimationMixer(rootObj);
+    animObject.animations.forEach((clip, index) => {
       console.log(`Запуск анимации ${index}:`, clip.name);
       const action = mixer.clipAction(clip);
       action.setLoop(THREE.LoopRepeat);
       action.play();
     });
 
-    status.textContent = '▶️ Анимации запущены: ' + gltf.animations.map(a => a.name).join(', ');
+    status.textContent = '▶️ Анимации запущены: ' + animObject.animations.map(a => a.name).join(', ');
   });
 
   // Сглаживание позиции/ротации
