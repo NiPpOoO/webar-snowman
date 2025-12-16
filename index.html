@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 79</title>
+<title>WebAR — 80</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -14,42 +14,28 @@
 
 <style>
 html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
   overflow: hidden;
 }
 
 #start {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  background: #000;
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10; background: #000;
 }
 
 #start button {
-  padding: 16px 26px;
-  font-size: 16px;
-  border-radius: 10px;
-  border: none;
+  padding: 16px 26px; font-size: 16px;
+  border-radius: 10px; border: none;
 }
 
 #status {
-  position: fixed;
-  bottom: 12px;
-  left: 50%;
+  position: fixed; bottom: 12px; left: 50%;
   transform: translateX(-50%);
-  background: rgba(0,0,0,0.65);
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  z-index: 11;
-  display: none;
+  background: rgba(0,0,0,0.65); color: #fff;
+  padding: 8px 12px; border-radius: 6px;
+  font-size: 14px; z-index: 11; display: none;
 }
 </style>
 </head>
@@ -71,7 +57,7 @@ startBtn.addEventListener('click', () => {
   startScreen.style.display = 'none';
   status.style.display = 'block';
 
-  // Создаем <a-scene> динамически
+  // Создаём <a-scene>
   const scene = document.createElement('a-scene');
   scene.setAttribute('mindar-image', 'imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;');
   scene.setAttribute('vr-mode-ui', 'enabled:false');
@@ -91,13 +77,13 @@ startBtn.addEventListener('click', () => {
   model.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   model.setAttribute('scale', '0.3 0.3 0.3');
   model.setAttribute('position', '-0.3 -0.3 0');
-  // Зацикленная анимация через animation-mixer
+  // Зацикленная анимация
   model.setAttribute('animation-mixer', 'clip: *; loop: repeat; timeScale: 1');
 
   target.appendChild(model);
   scene.appendChild(target);
 
-  // После загрузки сцены стартуем MindAR
+  // Старт MindAR после загрузки сцены
   scene.addEventListener('loaded', async () => {
     const mindarSystem = scene.systems['mindar-image-system'];
     if (!mindarSystem) {
