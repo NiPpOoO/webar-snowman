@@ -53,41 +53,43 @@ function createMarker(index) {
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контейнер моделей внутри маркера
-  const content = document.createElement('a-entity');
-
   // Левая модель
   const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position','-0.6 -0.4 0');
+  leftWrapper.setAttribute('position','-0.6 -0.4 0'); // сдвинута влево и ниже
   leftWrapper.setAttribute('super-smooth','');
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
   leftWrapper.appendChild(leftModel);
-  content.appendChild(leftWrapper);
+  marker.appendChild(leftWrapper);
 
   // Правая модель
   const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position','0.6 -0.4 0');
+  rightWrapper.setAttribute('position','0.6 -0.4 0'); // сдвинута вправо и ниже
   rightWrapper.setAttribute('super-smooth','');
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
   rightWrapper.appendChild(rightModel);
-  content.appendChild(rightWrapper);
+  marker.appendChild(rightWrapper);
 
-  marker.appendChild(content);
+  // Изначально скрываем
+  leftWrapper.setAttribute('visible', false);
+  rightWrapper.setAttribute('visible', false);
 
+  // События для показа/скрытия
   marker.addEventListener('targetFound', ()=> {
-    content.setAttribute('visible', true);
+    leftWrapper.setAttribute('visible', true);
+    rightWrapper.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
   });
 
   marker.addEventListener('targetLost', ()=> {
     setTimeout(()=>{
-      content.setAttribute('visible', false);
+      leftWrapper.setAttribute('visible', false);
+      rightWrapper.setAttribute('visible', false);
       status.textContent = 'Наведи камеру на маркер';
     },200);
   });
