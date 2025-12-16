@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 95</title>
+<title>WebAR — 94</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -36,77 +36,93 @@ startBtn.addEventListener('click', () => {
   startScreen.style.display = 'none';
   status.style.display = 'block';
 
-  // Создаем сцену
   const scene = document.createElement('a-scene');
   scene.setAttribute('mindar-image', 'imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;');
   scene.setAttribute('vr-mode-ui', 'enabled:false');
   scene.setAttribute('renderer', 'alpha:true');
   document.body.appendChild(scene);
 
-  // Камера
   const camera = document.createElement('a-camera');
   camera.setAttribute('look-controls', 'enabled:false');
   scene.appendChild(camera);
 
-  // Target
   const target = document.createElement('a-entity');
   target.setAttribute('mindar-image-target', 'targetIndex:0');
+  scene.appendChild(target);
 
-  // Обёртка модели
   const wrapper = document.createElement('a-entity');
-  wrapper.setAttribute('id','wrapper');
   wrapper.setAttribute('position','-0.3 -0.3 0');
-  wrapper.setAttribute('rotation','0 0 0');
+  target.appendChild(wrapper);
 
-  // Модель
   const model = document.createElement('a-entity');
   model.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   model.setAttribute('scale','0.3 0.3 0.3');
   wrapper.appendChild(model);
-  target.appendChild(wrapper);
-  scene.appendChild(target);
 
   let mixer = null;
   let actions = [];
 
+  // Ищем SkinnedMesh рекурсивно
+  function findSkinnedMesh(obj){
+    if(obj.type === "SkinnedMesh") return obj;
+    for(const child of obj.children){
+      const res = findSkinnedMesh(child);
+      if(res) return res;
+    }
+    return null;
+  }
+
   model.addEventListener('model-loaded', (e) => {
-    const entity = e.target;
-    const root = entity.getObject3D('mesh');
+    const root = e.detail.model.object3D;
+    const skinned = findSkinnedMesh(root);
 
-    if(!root){
-      console.warn("object3D 'mesh' не готов");
-      status.textContent = '❌ object3D не готов';
-      return;
-    }
-
-    // Рекурсивный поиск анимаций внутри SkinnedMesh
-    function findSkinnedMesh(obj){
-      if(obj.type === "SkinnedMesh" && obj.animations && obj.animations.length > 0) return obj;
-      for(const child of obj.children){
-        const found = findSkinnedMesh(child);
-        if(found) return found;
-      }
-      return null;
-    }
-
-    const animObj = findSkinnedMesh(root) || root;
-    console.log("Анимационный объект найден:", animObj);
-    console.log("Animations:", animObj.animations);
-
-    if(!animObj.animations || animObj.animations.length === 0){
+    if(!skinned){
+      console.warn("SkinnedMesh с анимациями не найден");
       status.textContent = '❌ Анимации не найдены';
       return;
     }
 
-    mixer = new THREE.AnimationMixer(animObj);
-    actions = animObj.animations.map(clip => mixer.clipAction(clip));
+    console.log("SkinnedMesh найден:", skinned);
+    console.log("Animations:", skinned.animations);
+
+    mixer = new THREE.AnimationMixer(skinned);
+    actions = skinned.animations.map((clip) => mixer.clipAction(clip));
     actions.forEach(action => action.setLoop(THREE.LoopRepeat));
-    status.textContent = '🎬 Анимации готовы, наведите камеру на маркер';
+    status.textContent = '▶️ Модель готова к анимации';
   });
 
-  // Tick — обновление миксера
+  target.addEventListener('targetFound', () => {
+    if(mixer && actions.length){
+      actions.forEach(a => a.play());
+      status.textContent = '▶️ Анимации запущены';
+    }
+  });
+
+  target.addEventListener('targetLost', () => {
+    if(mixer && actions.length){
+      actions.forEach(a => a.stop());
+      status.textContent = 'Наведи камеру на маркер';
+    }
+  });
+
+  // Сглаживание позиции/ротации
+  const prevPos = new THREE.Vector3();
+  const prevRot = new THREE.Euler();
+
   scene.addEventListener('tick', (ev) => {
     if(mixer) mixer.update(ev.detail.delta / 1000);
+
+    const obj = wrapper.object3D;
+    if(obj){
+      obj.position.lerp(prevPos.set(obj.position.x,obj.position.y,obj.position.z), 0.2);
+      obj.rotation.set(
+        THREE.MathUtils.lerp(prevRot.x,obj.rotation.x,0.2),
+        THREE.MathUtils.lerp(prevRot.y,obj.rotation.y,0.2),
+        THREE.MathUtils.lerp(prevRot.z,obj.rotation.z,0.2)
+      );
+      prevPos.copy(obj.position);
+      prevRot.copy(obj.rotation);
+    }
   });
 
   scene.addEventListener('loaded', async () => {
@@ -115,19 +131,8 @@ startBtn.addEventListener('click', () => {
     try {
       await mindarSystem.start();
       console.log('MindAR запущен');
-
-      // Запуск и остановка анимаций при targetFound/targetLost
-      target.addEventListener('targetFound', () => {
-        status.textContent='Маркер найден';
-        actions.forEach(a => a.play());
-      });
-      target.addEventListener('targetLost', () => {
-        status.textContent='Наведи камеру на маркер';
-        actions.forEach(a => a.stop());
-      });
-
     } catch(e){
-      alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
+      alert('Камера недоступна или отказано в доступе.');
       console.error(e);
     }
   });
