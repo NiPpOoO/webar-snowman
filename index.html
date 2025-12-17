@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 11</title>
+<title>WebAR — 1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -62,6 +62,23 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
+AFRAME.registerComponent('soft-stabilizer', {
+  schema: {
+    pos: { default: 0.25 },
+    rot: { default: 0.25 }
+  },
+  tick() {
+    const parent = this.el.parentEl;
+    if (!parent) return;
+
+    const src = parent.object3D;
+    const dst = this.el.object3D;
+
+    dst.position.lerp(src.position, this.data.pos);
+    dst.quaternion.slerp(src.quaternion, this.data.rot);
+  }
+});
+
 // Функция создания маркера с моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
@@ -69,8 +86,10 @@ function createMarker(index) {
   scene.appendChild(marker);
 
   // Контейнер моделей
-  const content = document.createElement('a-entity');
-  content.setAttribute('position','0 0 0');
+const content = document.createElement('a-entity');
+content.setAttribute('position','0 0 0');
+content.setAttribute('soft-stabilizer','');
+
 
   // Модель слев
   const leftWrapper = document.createElement('a-entity');
