@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Stable Forward Only</title>
+<title>WebAR — 1Stable Forward Only</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -40,9 +40,9 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 <div id="status">Наведите камеру на снеговика</div>
 
 <a-scene mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
-         vr-mode-ui="enabled:false"
-         device-orientation-permission-ui="enabled:false"
-         renderer="alpha:true">
+        vr-mode-ui="enabled:false"
+        device-orientation-permission-ui="enabled:false"
+        renderer="alpha:true">
 
   <a-camera look-controls="enabled:false"></a-camera>
 
@@ -59,47 +59,16 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
-// Компонент, который фиксирует X/Y и поворот, подстраивая только Z
-AFRAME.registerComponent('forward-only-stabilizer', {
-  schema: {
-    lerpZ: { default: 0.1 }
-  },
-  init() {
-    this.fixedPosition = null; // Сохраняем X/Y после первого появления
-    this.fixedRotation = new THREE.Quaternion();
-  },
-  tick() {
-    const parent = this.el.parentEl;
-    if (!parent) return;
-
-    const src = parent.object3D;
-    const dst = this.el.object3D;
-
-    if (!this.fixedPosition) {
-      // Фиксируем позицию X/Y и поворот при первом появлении
-      this.fixedPosition = new THREE.Vector3(src.position.x, src.position.y, src.position.z);
-      this.fixedRotation.copy(src.quaternion);
-    }
-
-    // Плавное обновление только Z
-    dst.position.x = this.fixedPosition.x;
-    dst.position.y = this.fixedPosition.y;
-    dst.position.z = THREE.MathUtils.lerp(dst.position.z, src.position.z, this.data.lerpZ);
-
-    // Фиксированный поворот
-    dst.quaternion.copy(this.fixedRotation);
-  }
-});
-
 // Функция создания маркера с моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
+  // Контент создаём отдельно, вне маркера
   const content = document.createElement('a-entity');
-  content.setAttribute('position','0 0 0');
-  content.setAttribute('forward-only-stabilizer','');
+  content.setAttribute('visible', false);
+  scene.appendChild(content);
 
   // Левая модель
   const leftWrapper = document.createElement('a-entity');
@@ -121,9 +90,14 @@ function createMarker(index) {
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
 
-  marker.appendChild(content);
-
+  // При обнаружении маркера копируем позицию/ориентацию один раз
   marker.addEventListener('targetFound', () => {
+    const pos = marker.object3D.position.clone();
+    const rot = marker.object3D.quaternion.clone();
+
+    content.object3D.position.copy(pos);
+    content.object3D.quaternion.copy(rot);
+
     content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
   });
@@ -167,6 +141,7 @@ startBtn.addEventListener('click', async ()=>{
   }
 });
 </script>
+
 
 </body>
 </html>
