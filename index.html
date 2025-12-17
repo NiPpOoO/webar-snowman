@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Freeze</title>
+<title>WebAR — Stable Hybrid</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -15,23 +15,9 @@
 
 <style>
 html, body { margin:0; width:100%; height:100%; overflow:hidden; }
-#start {
-  position:fixed; inset:0; background:#000;
-  display:flex; align-items:center; justify-content:center;
-  z-index:10;
-}
-#start button {
-  padding:16px 26px; font-size:16px;
-  border-radius:10px; border:none;
-}
-#status {
-  position:fixed; bottom:12px; left:50%;
-  transform:translateX(-50%);
-  background:rgba(0,0,0,.6);
-  color:#fff; padding:8px 12px;
-  border-radius:6px; z-index:11;
-  display:none;
-}
+#start { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:10; }
+#start button { padding:16px 26px; font-size:16px; border-radius:10px; border:none; }
+#status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.6); color:#fff; padding:8px 12px; border-radius:6px; z-index:11; display:none; }
 </style>
 </head>
 <body>
@@ -50,10 +36,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <a-camera look-controls="enabled:false"></a-camera>
 
   <!-- Музыка -->
-  <a-entity
-    id="music"
-    sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5">
-  </a-entity>
+  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
 
 </a-scene>
 
@@ -62,47 +45,36 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
-
 const markersCount = 6;
-const FREEZE_DELAY = 700; // мс — время стабилизации перед заморозкой
 
-// ===== Компонент заморозки =====
-AFRAME.registerComponent('freeze-follow', {
-  init() {
-    this.frozen = false;
-    this.freezeTimer = null;
-  },
+// Гибридный стабилизатор
+AFRAME.registerComponent('fixed-anchor', {
   tick() {
-    if (this.frozen) return;
-
-    const marker = this.el.parentEl;
-    if (!marker) return;
-
-    const src = marker.object3D;
+    if (!this.data.active) return;
     const dst = this.el.object3D;
-
-    dst.position.lerp(src.position, 0.25);
-    dst.quaternion.slerp(src.quaternion, 0.25);
+    dst.position.lerp(this.targetPos, 0.1);
   },
-  freeze() {
-    this.frozen = true;
+  schema: {
+    active: {default: false}
   },
-  reset() {
-    this.frozen = false;
+  init() {
+    this.targetPos = new THREE.Vector3();
   }
 });
 
-// ===== Создание маркера =====
+// Создаем общий контейнер моделей, который потом привяжем к world
+const worldContent = document.createElement('a-entity');
+scene.appendChild(worldContent);
+worldContent.setAttribute('visible','false');
+worldContent.setAttribute('fixed-anchor','');
+
+// Функция создания маркера с моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  const content = document.createElement('a-entity');
-  content.setAttribute('freeze-follow', '');
-  content.setAttribute('visible', 'false');
-
-  // Левая модель
+  // Контейнер моделей (отдельно для left и right)
   const leftWrapper = document.createElement('a-entity');
   leftWrapper.setAttribute('position','-0.5 -0.5 0');
   const leftModel = document.createElement('a-entity');
@@ -110,9 +82,7 @@ function createMarker(index) {
   leftModel.setAttribute('scale','0.05 0.05 0.05');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
   leftWrapper.appendChild(leftModel);
-  content.appendChild(leftWrapper);
 
-  // Правая модель
   const rightWrapper = document.createElement('a-entity');
   rightWrapper.setAttribute('position','0.5 -0.5 0');
   const rightModel = document.createElement('a-entity');
@@ -120,58 +90,53 @@ function createMarker(index) {
   rightModel.setAttribute('scale','0.05 0.05 0.05');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
   rightWrapper.appendChild(rightModel);
-  content.appendChild(rightWrapper);
 
-  marker.appendChild(content);
+  worldContent.appendChild(leftWrapper);
+  worldContent.appendChild(rightWrapper);
 
-  let freezeTimeout = null;
-
-  marker.addEventListener('targetFound', () => {
-    content.setAttribute('visible', true);
+  marker.addEventListener('targetFound', ()=>{
+    // Захватываем позицию маркера в world
+    marker.object3D.getWorldPosition(worldContent.components['fixed-anchor'].targetPos);
+    worldContent.components['fixed-anchor'].data.active = true;
+    worldContent.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
-
-    const comp = content.components['freeze-follow'];
-    comp.reset();
-
-    freezeTimeout = setTimeout(() => {
-      comp.freeze(); // ❄️ ФИКСАЦИЯ
-    }, FREEZE_DELAY);
   });
 
-  marker.addEventListener('targetLost', () => {
-    clearTimeout(freezeTimeout);
-    const comp = content.components['freeze-follow'];
-    if (comp) comp.reset();
-
-    setTimeout(() => {
-      content.setAttribute('visible', false);
-      status.textContent = 'Наведите камеру на снеговика';
-    }, 200);
+  marker.addEventListener('targetLost', ()=>{
+    setTimeout(()=>{
+      worldContent.components['fixed-anchor'].data.active = false;
+      worldContent.setAttribute('visible', false);
+      status.textContent = 'Наведи камеру на маркер';
+    },200);
   });
+
+  return marker;
 }
 
-// ===== Создаём маркеры =====
-for (let i = 0; i < markersCount; i++) {
+// Создаем все маркеры
+for(let i=0;i<markersCount;i++){
   createMarker(i);
 }
 
-// ===== Запуск AR =====
-startBtn.addEventListener('click', async () => {
+// Старт AR и музыки
+startBtn.addEventListener('click', async ()=>{
   startBtn.disabled = true;
-  startScreen.style.display = 'none';
-  status.style.display = 'block';
+  startScreen.style.display='none';
+  status.style.display='block';
 
   try {
+    // Ждем загрузки сцены
     if (!scene.hasLoaded) {
-      await new Promise(r => scene.addEventListener('loaded', r, { once:true }));
+      await new Promise(resolve => scene.addEventListener('loaded', resolve, {once:true}));
     }
 
     const mindar = scene.systems['mindar-image-system'];
     await mindar.start();
 
     document.getElementById('music').components.sound.playSound();
-  } catch (e) {
-    alert('Камера недоступна или отказано в доступе');
+
+  } catch(e){
+    alert('Камера недоступна или отказано в доступе.');
     console.error(e);
   }
 });
