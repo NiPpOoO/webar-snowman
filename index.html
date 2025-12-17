@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1</title>
+<title>WebAR — Stable</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -14,26 +14,42 @@
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-html, body { margin:0; width:100%; height:100%; overflow:hidden; }
+html, body {
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+}
 #start {
-  position:fixed; inset:0; background:#000;
-  display:flex; align-items:center; justify-content:center;
+  position:fixed;
+  inset:0;
+  background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   z-index:10;
 }
 #start button {
-  padding:16px 26px; font-size:16px;
-  border-radius:10px; border:none;
+  padding:16px 26px;
+  font-size:16px;
+  border-radius:10px;
+  border:none;
 }
 #status {
-  position:fixed; bottom:12px; left:50%;
+  position:fixed;
+  bottom:12px;
+  left:50%;
   transform:translateX(-50%);
   background:rgba(0,0,0,.6);
-  color:#fff; padding:8px 12px;
-  border-radius:6px; z-index:11;
+  color:#fff;
+  padding:8px 12px;
+  border-radius:6px;
+  z-index:11;
   display:none;
 }
 </style>
 </head>
+
 <body>
 
 <div id="start">
@@ -50,7 +66,13 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <a-camera look-controls="enabled:false"></a-camera>
 
   <!-- Музыка -->
-  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
+  <a-entity
+    id="music"
+    sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3);
+           autoplay:false;
+           loop:true;
+           volume:0.5">
+  </a-entity>
 
 </a-scene>
 
@@ -62,10 +84,13 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
+/* =========================
+   ПЛАВНАЯ СТАБИЛИЗАЦИЯ
+   ========================= */
 AFRAME.registerComponent('soft-stabilizer', {
   schema: {
-    pos: { default: 0.25 },
-    rot: { default: 0.25 }
+    pos: { default: 0.2 },
+    rot: { default: 0.2 }
   },
   tick() {
     const parent = this.el.parentEl;
@@ -79,68 +104,92 @@ AFRAME.registerComponent('soft-stabilizer', {
   }
 });
 
-// Функция создания маркера с моделями
+/* =========================
+   ОГРАНИЧЕНИЕ НАКЛОНА
+   ========================= */
+AFRAME.registerComponent('limit-rotation', {
+  tick() {
+    const r = this.el.object3D.rotation;
+    r.x = THREE.MathUtils.clamp(r.x, -0.25, 0.25);
+    r.z = THREE.MathUtils.clamp(r.z, -0.25, 0.25);
+  }
+});
+
+/* =========================
+   СОЗДАНИЕ МАРКЕРА
+   ========================= */
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контейнер моделей
-const content = document.createElement('a-entity');
-content.setAttribute('position','0 0 0');
-content.setAttribute('soft-stabilizer','');
+  const content = document.createElement('a-entity');
+  content.setAttribute('position', '0 0 0');
+  content.setAttribute('soft-stabilizer', '');
+  content.setAttribute('limit-rotation', '');
+  content.setAttribute('visible', false);
 
-
-  // Модель слев
+  /* Левая модель */
   const leftWrapper = document.createElement('a-entity');
   leftWrapper.setAttribute('position','-0.5 -0.5 0');
+
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
 
-  // Модель справа
+  /* Правая модель */
   const rightWrapper = document.createElement('a-entity');
   rightWrapper.setAttribute('position','0.5 -0.5 0');
+
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
 
   marker.appendChild(content);
 
-  marker.addEventListener('targetFound', ()=>{
-    content.setAttribute('visible', true);
-    status.textContent = 'Маркер найден';
+  let stableTimer = null;
+
+  marker.addEventListener('targetFound', () => {
+    clearTimeout(stableTimer);
+    stableTimer = setTimeout(() => {
+      content.setAttribute('visible', true);
+      status.textContent = 'Маркер найден';
+    }, 400);
   });
 
-  marker.addEventListener('targetLost', ()=>{
-    setTimeout(()=>{
-      content.setAttribute('visible', false);
-      status.textContent = 'Наведи камеру на маркер';
-    },200);
+  marker.addEventListener('targetLost', () => {
+    clearTimeout(stableTimer);
+    content.setAttribute('visible', false);
+    status.textContent = 'Наведите камеру на снеговика';
   });
 
   return marker;
 }
 
-// Создаем маркеры
-for(let i=0;i<markersCount;i++){
+/* =========================
+   СОЗДАЁМ МАРКЕРЫ
+   ========================= */
+for (let i = 0; i < markersCount; i++) {
   createMarker(i);
 }
 
-// Старт AR и музыки по кнопке
-startBtn.addEventListener('click', async ()=>{
+/* =========================
+   СТАРТ AR
+   ========================= */
+startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
-  startScreen.style.display='none';
-  status.style.display='block';
+  startScreen.style.display = 'none';
+  status.style.display = 'block';
 
   try {
-    // Ждём, пока сцена полностью загрузится
     if (!scene.hasLoaded) {
       await new Promise(resolve =>
         scene.addEventListener('loaded', resolve, { once:true })
@@ -153,12 +202,11 @@ startBtn.addEventListener('click', async ()=>{
     document.getElementById('music')
       .components.sound.playSound();
 
-  } catch(e){
+  } catch (e) {
     alert('Камера недоступна или отказано в доступе.');
     console.error(e);
   }
 });
-
 </script>
 
 </body>
