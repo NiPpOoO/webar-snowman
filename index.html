@@ -2,11 +2,14 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Stable Forward Only</title>
+<title>WebAR — Stable Fixed Models</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
+<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
@@ -22,11 +25,18 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 <div id="start">
   <button id="startBtn">Запустить AR</button>
 </div>
-<div id="status">Наведите камеру на маркер</div>
+<div id="status">Наведи камеру на маркер</div>
 
-<a-scene mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;" vr-mode-ui="enabled:false" device-orientation-permission-ui="enabled:false" renderer="alpha:true">
+<a-scene mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
+         vr-mode-ui="enabled:false"
+         device-orientation-permission-ui="enabled:false"
+         renderer="alpha:true">
+
   <a-camera look-controls="enabled:false"></a-camera>
+
+  <!-- Музыка -->
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
+
 </a-scene>
 
 <script>
@@ -34,46 +44,23 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
+
 const markersCount = 6;
 
-// Компонент: фиксируем Y и вращение, изменяем только Z (вперед/назад)
-AFRAME.registerComponent('forward-only-stabilizer', {
-  schema: { lerp: {default: 0.15} },
-  init() {
-    this.initialPos = this.el.object3D.position.clone();
-  },
-  tick() {
-    const parent = this.el.parentEl;
-    if (!parent) return;
-
-    const src = parent.object3D.position;
-    const dst = this.el.object3D.position;
-
-    // Задаем только изменение вперед/назад (оси Z) относительно начальной позиции
-    dst.x = this.initialPos.x; // фиксируем по X
-    dst.y = this.initialPos.y; // фиксируем по Y
-    dst.z += (src.z - dst.z) * this.data.lerp; // сглаживаем только Z
-
-    // полностью фиксируем вращение
-    const obj3D = this.el.object3D;
-    obj3D.rotation.set(0,0,0);
-  }
-});
-
-// Создание маркера с моделями
+// Функция создания маркера с фиксированными моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
+  // Контейнер моделей
   const content = document.createElement('a-entity');
-  content.setAttribute('position','0 0 0');
-  content.setAttribute('visible','false');
-  content.setAttribute('forward-only-stabilizer','');
+  content.setAttribute('position', '0 0 0');
+  content.setAttribute('visible', 'false');
 
-  // Левая модель
+  // Левая модель (слева от маркера, фиксировано)
   const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position','-0.7 -0.5 0');
+  leftWrapper.setAttribute('position','-0.5 -0.5 0'); // X и Y фиксированы
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
@@ -81,9 +68,9 @@ function createMarker(index) {
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
 
-  // Правая модель
+  // Правая модель (справа от маркера, фиксировано)
   const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position','0.7 -0.5 0');
+  rightWrapper.setAttribute('position','0.5 -0.5 0'); // X и Y фиксированы
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
@@ -93,7 +80,16 @@ function createMarker(index) {
 
   marker.appendChild(content);
 
+  let anchored = false;
+  let anchorZ = 0;
+
   marker.addEventListener('targetFound', ()=>{
+    if (!anchored) {
+      // Захватываем позицию Z один раз и фиксируем X/Y и rotation
+      anchorZ = marker.object3D.position.z;
+      content.setAttribute('position', `0 0 ${anchorZ}`);
+      anchored = true;
+    }
     content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
   });
@@ -101,7 +97,7 @@ function createMarker(index) {
   marker.addEventListener('targetLost', ()=>{
     setTimeout(()=>{
       content.setAttribute('visible', false);
-      status.textContent = 'Наведите камеру на маркер';
+      status.textContent = 'Наведи камеру на маркер';
     }, 200);
   });
 
@@ -109,9 +105,11 @@ function createMarker(index) {
 }
 
 // Создаем все маркеры
-for(let i=0;i<markersCount;i++) createMarker(i);
+for(let i=0; i<markersCount; i++){
+  createMarker(i);
+}
 
-// Старт AR и музыки
+// Старт AR по кнопке
 startBtn.addEventListener('click', async ()=>{
   startBtn.disabled = true;
   startScreen.style.display='none';
@@ -119,14 +117,16 @@ startBtn.addEventListener('click', async ()=>{
 
   try {
     if (!scene.hasLoaded) {
-      await new Promise(resolve => scene.addEventListener('loaded', resolve, {once:true}));
+      await new Promise(resolve => scene.addEventListener('loaded', resolve, { once:true }));
     }
 
     const mindar = scene.systems['mindar-image-system'];
     await mindar.start();
 
+    // Музыка запускается только после старта сцены
     document.getElementById('music').components.sound.playSound();
-  } catch(e){
+
+  } catch(e) {
     alert('Камера недоступна или отказано в доступе.');
     console.error(e);
   }
