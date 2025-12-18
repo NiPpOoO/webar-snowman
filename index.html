@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 223111</title>
+<title>WebAR — 1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -62,11 +62,19 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
-// Компонент для сглаживания дрожания модели
+// Компонент для сглаживания дрожания модели с фильтрацией шума
 AFRAME.registerComponent('soft-stabilizer', {
   schema: {
-    pos: { default: 0.25 },
-    rot: { default: 0.25 }
+    pos: { default: 0.15 },  // Более сильное сглаживание позиции
+    rot: { default: 0.15 },  // Более сильное сглаживание ротации
+    minMove: { default: 0.001 },  // Минимальное изменение для обновления позиции
+    minRot: { default: 0.001 }    // Минимальное изменение для обновления ротации
+  },
+  init() {
+    // Сохраняем предыдущие значения для проверки изменений
+    this.lastPos = new THREE.Vector3();
+    this.lastRot = new THREE.Quaternion();
+    this.isVisible = false;
   },
   tick() {
     const parent = this.el.parentEl;
@@ -75,8 +83,42 @@ AFRAME.registerComponent('soft-stabilizer', {
     const src = parent.object3D;
     const dst = this.el.object3D;
 
-    dst.position.lerp(src.position, this.data.pos);
-    dst.quaternion.slerp(src.quaternion, this.data.rot);
+    // Проверяем, видим ли маркер (через событие или проверку позиции)
+    const markerVisible = parent.getAttribute('visible') !== false;
+    
+    if (!markerVisible) {
+      // Если маркер не виден, скрываем контент
+      this.el.setAttribute('visible', false);
+      this.isVisible = false;
+      return;
+    }
+
+    // Вычисляем расстояние и угол изменения
+    const posDelta = src.position.distanceTo(this.lastPos);
+    const rotDelta = src.quaternion.angleTo(this.lastRot);
+
+    // Применяем сглаживание только если изменение достаточно большое
+    if (posDelta > this.data.minMove) {
+      dst.position.lerp(src.position, this.data.pos);
+      this.lastPos.copy(dst.position);
+    } else {
+      // Если изменение слишком маленькое, не обновляем позицию
+      dst.position.copy(this.lastPos);
+    }
+
+    if (rotDelta > this.data.minRot) {
+      dst.quaternion.slerp(src.quaternion, this.data.rot);
+      this.lastRot.copy(dst.quaternion);
+    } else {
+      // Если изменение слишком маленькое, не обновляем ротацию
+      dst.quaternion.copy(this.lastRot);
+    }
+
+    // Показываем контент только если маркер виден
+    if (!this.isVisible) {
+      this.el.setAttribute('visible', true);
+      this.isVisible = true;
+    }
   }
 });
 
@@ -114,15 +156,15 @@ function createMarker(index) {
   marker.appendChild(content);
 
   marker.addEventListener('targetFound', ()=>{
+    marker.setAttribute('visible', true);
     content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
   });
 
   marker.addEventListener('targetLost', ()=>{
-    setTimeout(()=>{
-      content.setAttribute('visible', false);
-      status.textContent = 'Наведи камеру на маркер';
-    },200);
+    marker.setAttribute('visible', false);
+    content.setAttribute('visible', false);
+    status.textContent = 'Наведи камеру на маркер';
   });
 
   return marker;
