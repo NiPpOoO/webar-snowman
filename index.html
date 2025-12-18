@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — модели без дергания</title>
+<title>WebAR — 6 маркеров без дерганий</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -52,20 +52,46 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <!-- Музыка -->
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
 
-  <!-- Скрытый маркер для трекинга -->
-  <a-entity id="markerTracker" mindar-image-target="targetIndex:0" visible="false">
-    <!-- Контейнер моделей -->
-    <a-entity id="modelsContainer" position="0 0 -2" visible="true">
-      <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-                position="-0.5 -0.5 0"
-                scale="0.05 0.05 0.05"
-                animation-mixer="clip:*; loop:repeat">
-      </a-entity>
-      <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-                position="0.5 -0.5 0"
-                scale="0.05 0.05 0.05"
-                animation-mixer="clip:*; loop:repeat">
-      </a-entity>
+  <!-- 6 маркеров с моделями -->
+  <a-entity mindar-image-target="targetIndex:0" visible="false">
+    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+              position="0 0 -2" scale="0.05 0.05 0.05"
+              animation-mixer="clip:*; loop:repeat">
+    </a-entity>
+  </a-entity>
+
+  <a-entity mindar-image-target="targetIndex:1" visible="false">
+    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+              position="0 0 -2" scale="0.05 0.05 0.05"
+              animation-mixer="clip:*; loop:repeat">
+    </a-entity>
+  </a-entity>
+
+  <a-entity mindar-image-target="targetIndex:2" visible="false">
+    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+              position="0 0 -2" scale="0.05 0.05 0.05"
+              animation-mixer="clip:*; loop:repeat">
+    </a-entity>
+  </a-entity>
+
+  <a-entity mindar-image-target="targetIndex:3" visible="false">
+    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+              position="0 0 -2" scale="0.05 0.05 0.05"
+              animation-mixer="clip:*; loop:repeat">
+    </a-entity>
+  </a-entity>
+
+  <a-entity mindar-image-target="targetIndex:4" visible="false">
+    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+              position="0 0 -2" scale="0.05 0.05 0.05"
+              animation-mixer="clip:*; loop:repeat">
+    </a-entity>
+  </a-entity>
+
+  <a-entity mindar-image-target="targetIndex:5" visible="false">
+    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+              position="0 0 -2" scale="0.05 0.05 0.05"
+              animation-mixer="clip:*; loop:repeat">
     </a-entity>
   </a-entity>
 
@@ -75,10 +101,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
-const markerTracker = document.getElementById('markerTracker');
-const modelsContainer = document.getElementById('modelsContainer');
-
-const step = 1; // шаг смещения относительно маркера
+const music = document.getElementById('music');
 
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
@@ -91,26 +114,23 @@ startBtn.addEventListener('click', async () => {
   try {
     await mindar.start();
 
-    // Запускаем музыку
-    const music = document.getElementById('music');
+    // Запуск музыки
     if(music.components.sound) music.components.sound.playSound();
 
-    // Когда маркер найден, присваиваем позицию моделей один раз
-    markerTracker.addEventListener('targetFound', () => {
-      status.textContent = 'Маркер найден';
+    // Управление статусом и видимостью моделей для каждого маркера
+    const markers = document.querySelectorAll('[mindar-image-target]');
+    markers.forEach(marker => {
+      const model = marker.children[0]; // внутренняя модель
+      model.setAttribute('visible', false); // изначально скрыта
 
-      const pos = new THREE.Vector3();
-      markerTracker.object3D.getWorldPosition(pos);
-
-      modelsContainer.object3D.position.set(
-        pos.x * step,
-        pos.y * step,
-        pos.z * step
-      );
-    });
-
-    markerTracker.addEventListener('targetLost', () => {
-      status.textContent = 'Наведи камеру на маркер';
+      marker.addEventListener('targetFound', () => {
+        model.setAttribute('visible', true);
+        status.textContent = 'Маркер найден';
+      });
+      marker.addEventListener('targetLost', () => {
+        model.setAttribute('visible', false);
+        status.textContent = 'Наведи камеру на маркер';
+      });
     });
 
   } catch(e) {
