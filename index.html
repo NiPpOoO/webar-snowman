@@ -2,150 +2,84 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 111 с анимацией</title>
+<title>WebAR — Статичные модели</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
-<!-- MindAR -->
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
-
 <style>
-html, body { margin:0; width:100%; height:100%; overflow:hidden; }
-#start {
-  position:fixed; inset:0; background:#000;
-  display:flex; align-items:center; justify-content:center;
-  z-index:10;
+html,body{
+  margin:0; width:100%; height:100%; overflow:hidden;
 }
-#start button {
-  padding:16px 26px; font-size:16px;
-  border-radius:10px; border:none;
+#start{
+  position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10; background:#000;
 }
-#status {
-  position:fixed; bottom:12px; left:50%;
-  transform:translateX(-50%);
-  background:rgba(0,0,0,.6);
-  color:#fff; padding:8px 12px;
-  border-radius:6px; z-index:11;
-  display:none;
+#start button{
+  padding:16px 28px; font-size:16px; border-radius:12px; border:none;
 }
 </style>
 </head>
+
 <body>
 
 <div id="start">
   <button id="startBtn">Запустить AR</button>
 </div>
-<div id="status">Наведи камеру на маркер</div>
 
-<a-scene
-  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
-  vr-mode-ui="enabled:false"
-  device-orientation-permission-ui="enabled:false"
-  renderer="alpha:true">
+<a-scene embedded vr-mode-ui="enabled:false" renderer="alpha:true">
 
-  <a-camera look-controls="enabled:false"></a-camera>
+  <!-- Камера с реальным видео на фоне -->
+  <a-entity camera look-controls="enabled:false">
 
-  <!-- Музыка -->
-  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
+    <!-- HUD контейнер: статичные модели -->
+    <a-entity id="hud" position="0 0 -2">
+
+      <!-- Левая модель -->
+      <a-entity
+        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+        position="-0.6 -0.4 0"
+        scale="0.05 0.05 0.05"
+        animation-mixer>
+      </a-entity>
+
+      <!-- Правая модель -->
+      <a-entity
+        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+        position="0.6 -0.4 0"
+        scale="0.05 0.05 0.05"
+        animation-mixer>
+      </a-entity>
+
+    </a-entity>
+
+  </a-entity>
 
 </a-scene>
 
 <script>
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
-const status = document.getElementById('status');
-const scene = document.querySelector('a-scene');
 
-const markersCount = 6;
-
-// Функция создания маркера с моделями
-function createMarker(index) {
-  const marker = document.createElement('a-entity');
-  marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
-  scene.appendChild(marker);
-
-  // Контейнер моделей
-  const content = document.createElement('a-entity');
-  content.setAttribute('position','0 0 0');
-
-  // Модель слева
-  const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position','-0.5 -0.5 0');
-  const leftModel = document.createElement('a-entity');
-  leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  leftModel.setAttribute('scale','0.05 0.05 0.05');
-  leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  leftWrapper.appendChild(leftModel);
-  content.appendChild(leftWrapper);
-
-  // Модель справа
-  const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position','0.5 -0.5 0');
-  const rightModel = document.createElement('a-entity');
-  rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  rightModel.setAttribute('scale','0.05 0.05 0.05');
-  rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  rightWrapper.appendChild(rightModel);
-  content.appendChild(rightWrapper);
-
-  marker.appendChild(content);
-
-  marker.addEventListener('targetFound', ()=>{
-    content.setAttribute('visible', true);
-    status.textContent = 'Маркер найден';
-
-    // 🔥 Запуск анимаций всех моделей внутри content
-    const models = content.querySelectorAll('[animation-mixer]');
-    models.forEach(model => {
-      if(model.components['animation-mixer']){
-        model.components['animation-mixer'].stop(); // на всякий случай
-        model.components['animation-mixer'].play(); // запускаем
-      }
-    });
-  });
-
-  marker.addEventListener('targetLost', ()=>{
-    setTimeout(()=>{
-      content.setAttribute('visible', false);
-      status.textContent = 'Наведи камеру на маркер';
-
-      // 🔥 Остановка анимаций при потере маркера
-      const models = content.querySelectorAll('[animation-mixer]');
-      models.forEach(model => {
-        if(model.components['animation-mixer']){
-          model.components['animation-mixer'].stop();
-        }
-      });
-    },200);
-  });
-
-  return marker;
-}
-
-// Создаем маркеры
-for(let i=0;i<markersCount;i++){
-  createMarker(i);
-}
-
-// Старт AR и музыки по кнопке
-startBtn.addEventListener('click', async ()=>{
+startBtn.onclick = async () => {
   startBtn.disabled = true;
   startScreen.style.display='none';
-  status.style.display='block';
+
   try {
-    const mindar = scene.systems['mindar-image-system'];
-    await mindar.start();
-    const music = document.getElementById('music');
-    music.components.sound.playSound();
-  } catch(e){
-    alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
+    // Запрос камеры через WebRTC
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.play();
+
+    // Можно добавить видео на фон через <a-video>, если нужно
+    // Но A-Frame сам покажет камеру на фоне сцены
+
+  } catch(e) {
+    alert('Не удалось включить камеру');
     console.error(e);
   }
-});
+};
 </script>
 
 </body>
