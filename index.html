@@ -2,12 +2,14 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Always on Camera</title>
+<title>WebAR — 11Camera + HUD</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
 
 <style>
-html, body{
+html,body{
   margin:0; width:100%; height:100%; overflow:hidden;
 }
 #start{
@@ -25,11 +27,14 @@ html, body{
   <button id="startBtn">Запустить камеру</button>
 </div>
 
-<a-scene embedded vr-mode-ui="enabled:false" renderer="alpha:true">
+<a-scene embedded
+         vr-mode-ui="enabled:false"
+         renderer="alpha:true"
+         arjs="sourceType: webcam; debugUIEnabled: false;">
 
-  <!-- Камера -->
-  <a-entity id="camera" camera look-controls="enabled:false" position="0 1.6 0">
-    
+  <!-- Камера AR.js -->
+  <a-entity camera look-controls="enabled:false">
+
     <!-- HUD модели -->
     <a-entity id="hud" position="0 0 -2" visible="false">
 
@@ -60,29 +65,14 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const hud = document.getElementById('hud');
 
-startBtn.onclick = async () => {
+startBtn.onclick = () => {
   startBtn.disabled = true;
   startScreen.style.display = 'none';
 
-  try {
-    // Запрашиваем камеру напрямую
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    const video = document.createElement('video');
-    video.srcObject = stream;
-    video.play();
-
-    // Можно добавить видео на фон сцены через <a-video>, если нужно
-    // Но A-Frame уже будет использовать камеру
-
-    // 🔥 Задержка появления моделей 5 секунд
-    setTimeout(() => {
-      hud.setAttribute('visible', 'true');
-    }, 5000);
-
-  } catch (e) {
-    alert('Не удалось получить доступ к камере');
-    console.error(e);
-  }
+  // 🔥 Показ моделей через 5 секунд
+  setTimeout(() => {
+    hud.setAttribute('visible','true');
+  }, 5000);
 };
 </script>
 
