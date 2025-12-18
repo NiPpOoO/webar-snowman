@@ -2,59 +2,27 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1Fixed Once & Forever</title>
+<title>WebAR — REAL FIXED</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
-<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-html,body{
-  margin:0;
-  width:100%;
-  height:100%;
-  overflow:hidden;
-}
-#start{
-  position:fixed;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#000;
-  z-index:10;
-}
-#start button{
-  padding:16px 28px;
-  font-size:16px;
-  border-radius:12px;
-  border:none;
-}
-#status{
-  position:fixed;
-  bottom:12px;
-  left:50%;
-  transform:translateX(-50%);
-  background:rgba(0,0,0,.65);
-  color:#fff;
-  padding:8px 14px;
-  border-radius:8px;
-  display:none;
-  z-index:11;
-}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:10;background:#000}
+#start button{padding:16px 28px;font-size:16px;border-radius:12px;border:none}
+#status{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);
+background:rgba(0,0,0,.6);color:#fff;padding:8px 14px;border-radius:6px;display:none;z-index:11}
 </style>
 </head>
 
 <body>
 
-<div id="start">
-  <button id="startBtn">Запустить AR</button>
-</div>
+<div id="start"><button id="startBtn">Запустить AR</button></div>
 <div id="status">Наведи камеру на маркер</div>
 
 <a-scene
@@ -74,15 +42,14 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 
-const MARKERS_COUNT = 6;
+const MARKERS = 6;
 
-function createMarker(index){
+function createMarker(i){
 
   const marker = document.createElement('a-entity');
-  marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
+  marker.setAttribute('mindar-image-target', `targetIndex:${i}`);
   scene.appendChild(marker);
 
-  // Контент (привязан к маркеру)
   const content = document.createElement('a-entity');
 
   const left = document.createElement('a-entity');
@@ -101,48 +68,48 @@ function createMarker(index){
   content.appendChild(right);
   marker.appendChild(content);
 
-  let fixed = false;
+  let spawned = false;
 
   marker.addEventListener('targetFound', () => {
-    if (fixed) return;
-    fixed = true;
+    if (spawned) return;
+    spawned = true;
 
-    // ОБНОВЛЯЕМ МИРОВУЮ МАТРИЦУ МАРКЕРА
     marker.object3D.updateMatrixWorld(true);
 
-    // КЛОНИРУЕМ КОНТЕНТ
-    const frozen = content.cloneNode(true);
-    scene.appendChild(frozen);
+    const pos = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    const euler = new THREE.Euler();
 
-    // КОПИРУЕМ МИРОВУЮ МАТРИЦУ
-    frozen.object3D.matrix.copy(marker.object3D.matrixWorld);
+    marker.object3D.getWorldPosition(pos);
+    marker.object3D.getWorldQuaternion(quat);
+    euler.setFromQuaternion(quat, 'YXZ');
 
-    // 🔒 ПОЛНАЯ ФИКСАЦИЯ — БОЛЬШЕ НИКАКИХ ОБНОВЛЕНИЙ
-    frozen.object3D.matrixAutoUpdate = false;
+    // 🔥 СОЗДАЁМ НОВЫЙ ОБЪЕКТ ВНЕ MindAR
+    const fixed = content.cloneNode(true);
+    scene.appendChild(fixed);
+
+    fixed.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    fixed.setAttribute(
+      'rotation',
+      `${THREE.MathUtils.radToDeg(euler.x)}
+       ${THREE.MathUtils.radToDeg(euler.y)}
+       ${THREE.MathUtils.radToDeg(euler.z)}`
+    );
 
     status.textContent = 'Модели зафиксированы';
   });
 }
 
-// СОЗДАЁМ МАРКЕРЫ
-for(let i=0;i<MARKERS_COUNT;i++){
-  createMarker(i);
-}
+for(let i=0;i<MARKERS;i++) createMarker(i);
 
-// ЗАПУСК
-startBtn.addEventListener('click', async () => {
+startBtn.onclick = async ()=>{
   startBtn.disabled = true;
-  startScreen.style.display = 'none';
-  status.style.display = 'block';
+  startScreen.style.display='none';
+  status.style.display='block';
 
-  try{
-    const mindar = scene.systems['mindar-image-system'];
-    await mindar.start();
-  }catch(e){
-    alert('Ошибка доступа к камере');
-    console.error(e);
-  }
-});
+  const mindar = scene.systems['mindar-image-system'];
+  await mindar.start();
+};
 </script>
 
 </body>
