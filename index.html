@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1</title>
+<title>WebAR — 1222</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -163,10 +163,16 @@ AFRAME.registerComponent('soft-stabilizer', {
       this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
       
       this.lastUpdateTime = currentTime;
+      
+      // Применяем стабильную позицию ТОЛЬКО после обновления
+      dst.position.copy(this.stablePosition);
+    } else {
+      // Если не время обновлять - используем последнюю стабильную позицию (не обновляем)
+      // Это критично для устранения дрожания!
+      if (this.stablePosition) {
+        dst.position.copy(this.stablePosition);
+      }
     }
-    
-    // Применяем стабильную позицию (только если она обновлялась)
-    dst.position.copy(this.stablePosition);
     
     // Блокируем ротацию
     if (this.data.lockRot) {
@@ -273,27 +279,29 @@ function createMarker(index) {
   // Контейнер моделей с сглаживанием
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  // УЛЬТРА-стабилизация: очень плавное сглаживание с медианным фильтром
-  // ТЕКУЩИЕ ПАРАМЕТРЫ (баланс):
-  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; minMoveDistance: 0.15; smoothing: 0.05; updateInterval: 100');
-  
-  // ЕСЛИ ВСЕ ЕЩЕ ДЕРГАЕТСЯ - используйте МАКСИМАЛЬНУЮ стабилизацию:
-  // content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; minMoveDistance: 0.25; smoothing: 0.02; updateInterval: 150');
+  // МАКСИМАЛЬНАЯ стабилизация для устранения дрожания
+  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; minMoveDistance: 0.25; smoothing: 0.02; updateInterval: 150');
 
   // Модель слева
   const leftWrapper = document.createElement('a-entity');
   leftWrapper.setAttribute('position','-0.5 -0.5 0');
   leftWrapper.setAttribute('visible','true');
+  leftWrapper.setAttribute('rotation','0 0 0'); // Фиксированная ротация - без поворота к камере
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
   leftModel.setAttribute('rotation','0 0 0');
   leftModel.setAttribute('visible','true');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  // ВАРИАНТ 1: С поворотом к камере (может вызывать дрожание)
-  leftWrapper.setAttribute('look-at-camera','smoothing: 0.08; updateInterval: 100');
-  // ВАРИАНТ 2: БЕЗ поворота к камере (максимальная стабильность) - раскомментируйте:
-  // leftWrapper.setAttribute('rotation','0 0 0');
+  
+  // Обработчики загрузки модели
+  leftModel.addEventListener('model-loaded', ()=>{
+    console.log(`Маркер ${index}: левая модель (Fox) загружена`);
+    leftModel.setAttribute('visible', true);
+  });
+  leftModel.addEventListener('model-error', (e)=>{
+    console.error(`Маркер ${index}: ошибка загрузки левой модели:`, e);
+  });
   
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
@@ -302,16 +310,23 @@ function createMarker(index) {
   const rightWrapper = document.createElement('a-entity');
   rightWrapper.setAttribute('position','0.5 -0.5 0');
   rightWrapper.setAttribute('visible','true');
+  rightWrapper.setAttribute('rotation','0 0 0'); // Фиксированная ротация - без поворота к камере
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
   rightModel.setAttribute('rotation','0 0 0');
   rightModel.setAttribute('visible','true');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  // ВАРИАНТ 1: С поворотом к камере
-  rightWrapper.setAttribute('look-at-camera','smoothing: 0.08; updateInterval: 100');
-  // ВАРИАНТ 2: БЕЗ поворота к камере - раскомментируйте:
-  // rightWrapper.setAttribute('rotation','0 0 0');
+  
+  // Обработчики загрузки модели
+  rightModel.addEventListener('model-loaded', ()=>{
+    console.log(`Маркер ${index}: правая модель (Fox1) загружена`);
+    rightModel.setAttribute('visible', true);
+  });
+  rightModel.addEventListener('model-error', (e)=>{
+    console.error(`Маркер ${index}: ошибка загрузки правой модели:`, e);
+  });
+  
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
 
