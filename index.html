@@ -2,86 +2,58 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Fixed Models</title>
+<title>WebAR — Always On Screen</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
+<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#000;
+}
+</style>
 </head>
+
 <body>
 
 <a-scene
-  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:true;"
   vr-mode-ui="enabled:false"
-  device-orientation-permission-ui="enabled:false"
-  renderer="alpha:true">
+  renderer="alpha:true"
+  embedded>
 
-  <a-camera look-controls="enabled:false"></a-camera>
+  <!-- КАМЕРА -->
+  <a-camera look-controls="enabled:false">
 
-  <!-- 6 маркеров -->
-  <a-entity id="marker0" mindar-image-target="targetIndex:0"></a-entity>
-  <a-entity id="marker1" mindar-image-target="targetIndex:1"></a-entity>
-  <a-entity id="marker2" mindar-image-target="targetIndex:2"></a-entity>
-  <a-entity id="marker3" mindar-image-target="targetIndex:3"></a-entity>
-  <a-entity id="marker4" mindar-image-target="targetIndex:4"></a-entity>
-  <a-entity id="marker5" mindar-image-target="targetIndex:5"></a-entity>
+    <!-- 🔥 HUD-КОНТЕЙНЕР (ВСЕГДА В КАДРЕ) -->
+    <a-entity position="0 0 -2">
 
-  <!-- Независимые контейнеры для моделей -->
-  <a-entity id="fixed0" visible="false"></a-entity>
-  <a-entity id="fixed1" visible="false"></a-entity>
-  <a-entity id="fixed2" visible="false"></a-entity>
-  <a-entity id="fixed3" visible="false"></a-entity>
-  <a-entity id="fixed4" visible="false"></a-entity>
-  <a-entity id="fixed5" visible="false"></a-entity>
+      <!-- Левая модель -->
+      <a-entity
+        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+        position="-0.6 -0.4 0"
+        scale="0.05 0.05 0.05"
+        animation-mixer>
+      </a-entity>
+
+      <!-- Правая модель -->
+      <a-entity
+        gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+        position="0.6 -0.4 0"
+        scale="0.05 0.05 0.05"
+        animation-mixer>
+      </a-entity>
+
+    </a-entity>
+
+  </a-camera>
 
 </a-scene>
-
-<script>
-function setupMarker(markerId, fixedId) {
-  const marker = document.getElementById(markerId);
-  const fixed = document.getElementById(fixedId);
-
-  // Добавляем модели в контейнер fixed
-  const leftModel = document.createElement('a-entity');
-  leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  leftModel.setAttribute('scale','0.05 0.05 0.05');
-  leftModel.setAttribute('position','-0.5 -0.5 0');
-  leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-
-  const rightModel = document.createElement('a-entity');
-  rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  rightModel.setAttribute('scale','0.05 0.05 0.05');
-  rightModel.setAttribute('position','0.5 -0.5 0');
-  rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-
-  fixed.appendChild(leftModel);
-  fixed.appendChild(rightModel);
-
-  marker.addEventListener('targetFound', () => {
-    // Получаем мировые координаты маркера
-    const worldPos = new THREE.Vector3();
-    const worldQuat = new THREE.Quaternion();
-    marker.object3D.getWorldPosition(worldPos);
-    marker.object3D.getWorldQuaternion(worldQuat);
-
-    // Переносим контейнер fixed в эти координаты
-    fixed.object3D.position.copy(worldPos);
-    fixed.object3D.quaternion.copy(worldQuat);
-
-    fixed.setAttribute('visible', true);
-  });
-
-  marker.addEventListener('targetLost', () => {
-    // НЕ скрываем — модели остаются навсегда
-  });
-}
-
-// Настраиваем все 6 маркеров
-for (let i = 0; i < 6; i++) {
-  setupMarker(`marker${i}`, `fixed${i}`);
-}
-</script>
 
 </body>
 </html>
