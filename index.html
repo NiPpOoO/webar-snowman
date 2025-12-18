@@ -2,68 +2,146 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1Fixed Copy</title>
+<title>WebAR — 1Fixed Once & Forever</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
+<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+}
+#start{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#000;
+  z-index:10;
+}
+#start button{
+  padding:16px 28px;
+  font-size:16px;
+  border-radius:12px;
+  border:none;
+}
+#status{
+  position:fixed;
+  bottom:12px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.65);
+  color:#fff;
+  padding:8px 14px;
+  border-radius:8px;
+  display:none;
+  z-index:11;
+}
+</style>
 </head>
+
 <body>
 
+<div id="start">
+  <button id="startBtn">Запустить AR</button>
+</div>
+<div id="status">Наведи камеру на маркер</div>
+
 <a-scene
-  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:true;"
+  mindar-image="imageTargetSrc:https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
   vr-mode-ui="enabled:false"
   device-orientation-permission-ui="enabled:false"
-  renderer="alpha:true">
+  renderer="alpha:true"
+  embedded>
 
   <a-camera look-controls="enabled:false"></a-camera>
-
-  <!-- Маркер с временными моделями -->
-  <a-entity id="marker" mindar-image-target="targetIndex:0">
-    <a-entity id="tempFox" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-              scale="0.05 0.05 0.05"
-              visible="false"
-              animation-mixer="clip:*; loop:repeat">
-    </a-entity>
-  </a-entity>
-
-  <!-- Независимая копия вне маркера -->
-  <a-entity id="fixedFox" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-            scale="0.05 0.05 0.05"
-            visible="false"
-            animation-mixer="clip:*; loop:repeat">
-  </a-entity>
 
 </a-scene>
 
 <script>
-const marker = document.getElementById('marker');
-const tempFox = document.getElementById('tempFox');
-const fixedFox = document.getElementById('fixedFox');
+const scene = document.querySelector('a-scene');
+const startBtn = document.getElementById('startBtn');
+const startScreen = document.getElementById('start');
+const status = document.getElementById('status');
 
-marker.addEventListener('targetFound', () => {
-  // показать временную модель внутри маркера
-  tempFox.setAttribute('visible', true);
+const MARKERS_COUNT = 6;
 
-  // получить мировые координаты
-  const worldPos = new THREE.Vector3();
-  const worldQuat = new THREE.Quaternion();
-  tempFox.object3D.getWorldPosition(worldPos);
-  tempFox.object3D.getWorldQuaternion(worldQuat);
+function createMarker(index){
 
-  // перенести в независимую копию
-  fixedFox.object3D.position.copy(worldPos);
-  fixedFox.object3D.quaternion.copy(worldQuat);
+  const marker = document.createElement('a-entity');
+  marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
+  scene.appendChild(marker);
 
-  fixedFox.setAttribute('visible', true);
+  // Контент (привязан к маркеру)
+  const content = document.createElement('a-entity');
 
-  // скрыть временную модель внутри маркера
-  tempFox.setAttribute('visible', false);
-});
+  const left = document.createElement('a-entity');
+  left.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
+  left.setAttribute('position','-0.5 -0.5 0');
+  left.setAttribute('scale','0.05 0.05 0.05');
+  left.setAttribute('animation-mixer','');
 
-marker.addEventListener('targetLost', () => {
-  // НЕ скрываем — копия остаётся навсегда
+  const right = document.createElement('a-entity');
+  right.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
+  right.setAttribute('position','0.5 -0.5 0');
+  right.setAttribute('scale','0.05 0.05 0.05');
+  right.setAttribute('animation-mixer','');
+
+  content.appendChild(left);
+  content.appendChild(right);
+  marker.appendChild(content);
+
+  let fixed = false;
+
+  marker.addEventListener('targetFound', () => {
+    if (fixed) return;
+    fixed = true;
+
+    // ОБНОВЛЯЕМ МИРОВУЮ МАТРИЦУ МАРКЕРА
+    marker.object3D.updateMatrixWorld(true);
+
+    // КЛОНИРУЕМ КОНТЕНТ
+    const frozen = content.cloneNode(true);
+    scene.appendChild(frozen);
+
+    // КОПИРУЕМ МИРОВУЮ МАТРИЦУ
+    frozen.object3D.matrix.copy(marker.object3D.matrixWorld);
+
+    // 🔒 ПОЛНАЯ ФИКСАЦИЯ — БОЛЬШЕ НИКАКИХ ОБНОВЛЕНИЙ
+    frozen.object3D.matrixAutoUpdate = false;
+
+    status.textContent = 'Модели зафиксированы';
+  });
+}
+
+// СОЗДАЁМ МАРКЕРЫ
+for(let i=0;i<MARKERS_COUNT;i++){
+  createMarker(i);
+}
+
+// ЗАПУСК
+startBtn.addEventListener('click', async () => {
+  startBtn.disabled = true;
+  startScreen.style.display = 'none';
+  status.style.display = 'block';
+
+  try{
+    const mindar = scene.systems['mindar-image-system'];
+    await mindar.start();
+  }catch(e){
+    alert('Ошибка доступа к камере');
+    console.error(e);
+  }
 });
 </script>
 
