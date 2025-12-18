@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 6Статичные модели с позициями маркеров</title>
+<title>WebAR — Статичные модели с анимацией и обновлением позиции</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -52,23 +52,19 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <!-- Музыка -->
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
 
-  <!-- Контейнер для статичных моделей -->
+  <!-- Контейнер для моделей -->
   <a-entity id="modelsContainer" visible="false">
-
     <a-entity id="leftModel"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-      position="0 0 0"
       scale="0.05 0.05 0.05"
       animation-mixer>
     </a-entity>
 
     <a-entity id="rightModel"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-      position="0 0 0"
       scale="0.05 0.05 0.05"
       animation-mixer>
     </a-entity>
-
   </a-entity>
 
 </a-scene>
@@ -78,67 +74,51 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
+
 const modelsContainer = document.getElementById('modelsContainer');
 const leftModel = document.getElementById('leftModel');
 const rightModel = document.getElementById('rightModel');
 const music = document.getElementById('music');
 
-const markersCount = 6;
-let markerEntities = [];
+let markerPositions = [{x:0, y:0, z:0}]; // массив позиций для маркеров, можно расширить
 
-// Создаем маркеры (невидимые, только для получения позиции)
-function createMarker(index) {
-  const marker = document.createElement('a-entity');
-  marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
-  marker.setAttribute('visible', 'false'); // не отображаем маркер
-  scene.appendChild(marker);
-  markerEntities.push(marker);
-}
-for(let i=0;i<markersCount;i++){
-  createMarker(i);
-}
-
-// Функция обновления позиции моделей по маркерам
+// Функция имитации обновления позиции маркера каждые 5 секунд
 function updateModelPositions() {
-  if(markerEntities.length === 0) return;
-  // Берем первый найденный маркер (можно расширить логику для всех маркеров)
-  const foundMarker = markerEntities.find(m => m.object3D.visible);
-  if(foundMarker){
-    const worldPos = new THREE.Vector3();
-    foundMarker.object3D.getWorldPosition(worldPos);
-    leftModel.setAttribute('position', `${worldPos.x - 0.5} ${worldPos.y -0.5} ${worldPos.z}`);
-    rightModel.setAttribute('position', `${worldPos.x + 0.5} ${worldPos.y -0.5} ${worldPos.z}`);
-  }
+  // Например, берем первую позицию маркера
+  const pos = markerPositions[0];
+  leftModel.setAttribute('position', `${pos.x - 0.5} ${pos.y - 0.5} ${pos.z}`);
+  rightModel.setAttribute('position', `${pos.x + 0.5} ${pos.y - 0.5} ${pos.z}`);
 }
 
-// Старт AR и музыки по кнопке
-startBtn.addEventListener('click', async ()=> {
+startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
   startScreen.style.display = 'none';
   status.style.display = 'block';
+
   try {
+    // Запрос доступа к камере (важно для Android)
+    await navigator.mediaDevices.getUserMedia({ video: true });
+
     const mindar = scene.systems['mindar-image-system'];
     await mindar.start();
 
-    // Показываем модели
-    modelsContainer.setAttribute('visible', true);
+    // Включаем музыку
+    music.components.sound.playSound();
 
-    // Запускаем анимацию после загрузки
-    [leftModel, rightModel].forEach(model=>{
-      model.addEventListener('model-loaded', ()=>{
-        if(model.components['animation-mixer']){
+    // После загрузки моделей показываем контейнер и запускаем анимацию
+    [leftModel, rightModel].forEach(model => {
+      model.addEventListener('model-loaded', () => {
+        modelsContainer.setAttribute('visible', true);
+        if (model.components['animation-mixer']) {
           model.components['animation-mixer'].play();
         }
       });
     });
 
-    // Запускаем музыку
-    music.components.sound.playSound();
-
-    // Обновляем позицию каждые 5 секунд
+    // Обновление позиции моделей каждые 5 секунд
     setInterval(updateModelPositions, 5000);
 
-  } catch(e){
+  } catch (e) {
     alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
     console.error(e);
   }
