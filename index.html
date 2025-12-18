@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — аркеров, 2 модели, плавно</title>
+<title>WebAR — бильная модель вне маркера</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -17,14 +17,19 @@
 html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #start {
   position:fixed; inset:0; background:#000;
-  display:flex; align-items:center; justify-content:center; z-index:10;
+  display:flex; align-items:center; justify-content:center;
+  z-index:10;
 }
-#start button { padding:16px 26px; font-size:16px; border-radius:10px; border:none; }
+#start button {
+  padding:16px 26px; font-size:16px; border-radius:10px; border:none;
+}
 #status {
   position:fixed; bottom:12px; left:50%;
   transform:translateX(-50%);
-  background:rgba(0,0,0,.6); color:#fff; padding:8px 12px;
-  border-radius:6px; z-index:11; display:none;
+  background:rgba(0,0,0,.6);
+  color:#fff; padding:8px 12px;
+  border-radius:6px; z-index:11;
+  display:none;
 }
 </style>
 </head>
@@ -46,13 +51,23 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <!-- Музыка -->
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
 
-  <!-- 6 маркеров с контейнерами для плавного движения -->
-  <a-entity id="markerContainer0" mindar-image-target="targetIndex:0" visible="false"></a-entity>
-  <a-entity id="markerContainer1" mindar-image-target="targetIndex:1" visible="false"></a-entity>
-  <a-entity id="markerContainer2" mindar-image-target="targetIndex:2" visible="false"></a-entity>
-  <a-entity id="markerContainer3" mindar-image-target="targetIndex:3" visible="false"></a-entity>
-  <a-entity id="markerContainer4" mindar-image-target="targetIndex:4" visible="false"></a-entity>
-  <a-entity id="markerContainer5" mindar-image-target="targetIndex:5" visible="false"></a-entity>
+  <!-- Маркер (скрытый) -->
+  <a-entity id="marker" mindar-image-target="targetIndex:0" visible="false"></a-entity>
+
+  <!-- Модель вне маркера -->
+  <a-entity id="modelContainer" position="0 0 -2">
+    <a-entity
+      gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+      scale="0.05 0.05 0.05"
+      animation-mixer="clip:*; loop:repeat">
+    </a-entity>
+    <a-entity
+      gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+      position="0.5 0 0"
+      scale="0.05 0.05 0.05"
+      animation-mixer="clip:*; loop:repeat">
+    </a-entity>
+  </a-entity>
 
 </a-scene>
 
@@ -60,72 +75,49 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
-const scene = document.querySelector('a-scene');
+const marker = document.getElementById('marker');
+const modelContainer = document.getElementById('modelContainer');
 const music = document.getElementById('music');
 
-const markerIds = [0,1,2,3,4,5];
+let mindar = null;
+let markerWorldPos = new THREE.Vector3();
+let currentPos = new THREE.Vector3();
+const lerpFactor = 0.1; // чем меньше, тем плавнее
 
-// Создаем модели внутри контейнеров
-markerIds.forEach(id => {
-  const container = document.getElementById(`markerContainer${id}`);
-
-  // Модель слева
-  const left = document.createElement('a-entity');
-  left.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  left.setAttribute('scale','0.05 0.05 0.05');
-  left.setAttribute('position','-0.5 -0.5 0');
-  left.setAttribute('animation-mixer','clip:*; loop:repeat');
-  container.appendChild(left);
-
-  // Модель справа
-  const right = document.createElement('a-entity');
-  right.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  right.setAttribute('scale','0.05 0.05 0.05');
-  right.setAttribute('position','0.5 -0.5 0');
-  right.setAttribute('animation-mixer','clip:*; loop:repeat');
-  container.appendChild(right);
-
-  // События для статуса
-  container.addEventListener('targetFound', () => {
-    status.textContent = `Маркер ${id} найден`;
-    container.setAttribute('visible', true);
-  });
-  container.addEventListener('targetLost', () => {
-    status.textContent = 'Наведи камеру на маркер';
-    container.setAttribute('visible', false);
-  });
-});
-
-// Функция плавного обновления позиции
-function smoothFollow(container) {
-  const targetPos = new THREE.Vector3();
-  const currentPos = container.object3D.position.clone();
-  const lerpFactor = 0.2; // шаг сглаживания, можно уменьшить
-
-  function update() {
-    if(container.object3D.parent) {
-      container.object3D.getWorldPosition(targetPos);
-      currentPos.lerp(targetPos, lerpFactor);
-      container.object3D.position.copy(currentPos);
-    }
-    requestAnimationFrame(update);
-  }
-  update();
-}
-
-markerIds.forEach(id => smoothFollow(document.getElementById(`markerContainer${id}`)));
-
-// Старт AR
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
-  startScreen.style.display='none';
-  status.style.display='block';
+  startScreen.style.display = 'none';
+  status.style.display = 'block';
+
+  const scene = document.querySelector('a-scene');
+  mindar = scene.systems['mindar-image-system'];
+
   try {
-    const mindar = scene.systems['mindar-image-system'];
     await mindar.start();
+
     if(music.components.sound) music.components.sound.playSound();
+
+    // Показываем модель при обнаружении маркера
+    marker.addEventListener('targetFound', () => {
+      status.textContent = 'Маркер найден';
+    });
+    marker.addEventListener('targetLost', () => {
+      status.textContent = 'Наведи камеру на маркер';
+    });
+
+    // Обновляем позицию модели каждый кадр
+    scene.addEventListener('frame', () => {
+      if(marker.object3D.visible){
+        marker.object3D.getWorldPosition(markerWorldPos);
+
+        // плавная интерполяция
+        currentPos.lerp(markerWorldPos, lerpFactor);
+        modelContainer.object3D.position.copy(currentPos);
+      }
+    });
+
   } catch(e){
-    alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
+    alert('Камера недоступна или отказано в доступе.');
     console.error(e);
   }
 });
