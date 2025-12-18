@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 322</title>
+<title>WebAR — 4545</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -193,10 +193,18 @@ AFRAME.registerComponent('soft-stabilizer', {
     // Это гарантирует, что модель не будет дрожать между обновлениями
     // Применяем КАЖДЫЙ КАДР, чтобы перезаписать любые изменения от MindAR
     // ВАЖНО: content должен быть в позиции 0,0,0 относительно маркера для стабильности
+    // КРИТИЧНО: применяем КАЖДЫЙ КАДР, чтобы заблокировать любые изменения от MindAR
     if (this.stablePosition) {
       // Для стабильности просто фиксируем позицию на 0,0,0 относительно маркера
       // Это означает, что модели всегда в центре маркера, без дрожания
+      // Применяем КАЖДЫЙ КАДР для максимальной стабильности
       dst.position.set(0, 0, 0);
+      
+      // ДОПОЛНИТЕЛЬНО: блокируем любые изменения позиции через object3D напрямую
+      // Это перезаписывает любые обновления от MindAR
+      if (dst.position.x !== 0 || dst.position.y !== 0 || dst.position.z !== 0) {
+        dst.position.set(0, 0, 0);
+      }
     }
     
     // Обновляем только с заданным интервалом (например, каждые 5 секунд)
@@ -232,12 +240,8 @@ AFRAME.registerComponent('soft-stabilizer', {
         // Применяем сглаживание для плавного перехода
         this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
         console.log(`  Новая стабильная позиция:`, this.stablePosition);
-        // Обновляем позицию модели
-        dst.position.set(
-          this.stablePosition.x,
-          this.stablePosition.y,
-          this.stablePosition.z
-        );
+        // НЕ обновляем позицию модели здесь - она всегда должна быть 0,0,0 относительно маркера
+        // Позиция обновляется в основном цикле выше КАЖДЫЙ КАДР
       } else {
         // Если движение недостаточно большое - не обновляем позицию
         console.log(`✗ Позиция НЕ обновлена: расстояние = ${distance.toFixed(3)} < порог ${this.data.minMoveDistance}`);
