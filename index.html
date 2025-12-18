@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>AR — 4Статичные модели с анимацией</title>
+<title>AR — Статичные модели с анимацией</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -10,22 +10,11 @@
 
 <style>
 html, body {
-  margin: 0; width: 100%; height: 100%; overflow: hidden;
-}
-#start{
-  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-  z-index: 10; background: #000;
-}
-#start button{
-  padding:16px 28px; font-size:16px; border-radius:12px; border:none;
+  margin: 0; width: 100%; height: 100%; overflow: hidden
 }
 </style>
 </head>
 <body>
-
-<div id="start">
-  <button id="startBtn">Запустить AR</button>
-</div>
 
 <a-scene embedded
         vr-mode-ui="enabled:false"
@@ -37,21 +26,19 @@ html, body {
     <a-entity id="hud" position="0 0 -2">
 
       <!-- Левая модель -->
-      <a-entity id="leftModel"
+      <a-entity
         gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
         position="-0.3 -0.4 0"
         scale="0.05 0.05 0.05"
-        animation-mixer
-        visible="false">
+        animation-mixer>
       </a-entity>
 
       <!-- Правая модель -->
-      <a-entity id="rightModel"
+      <a-entity
         gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
         position="0.3 -0.4 0"
         scale="0.05 0.05 0.05"
-        animation-mixer
-        visible="false">
+        animation-mixer>
       </a-entity>
 
     </a-entity>
@@ -59,34 +46,6 @@ html, body {
   </a-entity>
 
 </a-scene>
-
-<script>
-const startBtn = document.getElementById('startBtn');
-const startScreen = document.getElementById('start');
-
-startBtn.onclick = () => {
-  startBtn.disabled = true;
-  startScreen.style.display = 'none';
-
-  setTimeout(() => {
-    const models = document.querySelectorAll('#hud [gltf-model]');
-    models.forEach(model => {
-      // показываем модель
-      model.setAttribute('visible', 'true');
-
-      // плавное появление через scale (0 → 0.05)
-      model.setAttribute('animation', 'property: scale; from:0 0 0; to:0.05 0.05 0.05; dur:1000; easing:easeOutElastic');
-
-      // Перезапускаем анимацию GLTF
-      const mixer = model.components['animation-mixer'];
-      if(mixer){
-        mixer.stop();
-        mixer.play();
-      }
-    });
-  }, 5000); // задержка 5 секунд
-};
-</script>
 
 </body>
 </html>
