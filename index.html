@@ -2,8 +2,8 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1Статичные модели с анимацией</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>AR — 4Статичные модели с анимацией</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
@@ -41,7 +41,8 @@ html, body {
         gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
         position="-0.3 -0.4 0"
         scale="0.05 0.05 0.05"
-        animation-mixer>
+        animation-mixer
+        visible="false">
       </a-entity>
 
       <!-- Правая модель -->
@@ -49,7 +50,8 @@ html, body {
         gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
         position="0.3 -0.4 0"
         scale="0.05 0.05 0.05"
-        animation-mixer>
+        animation-mixer
+        visible="false">
       </a-entity>
 
     </a-entity>
@@ -66,23 +68,23 @@ startBtn.onclick = () => {
   startBtn.disabled = true;
   startScreen.style.display = 'none';
 
-  const models = document.querySelectorAll('#hud [gltf-model]');
-
-  // Задержка 5 секунд для плавного появления
   setTimeout(() => {
+    const models = document.querySelectorAll('#hud [gltf-model]');
     models.forEach(model => {
-      // Плавное появление через scale
-      model.setAttribute('animation', 'property: scale; from:0 0 0; to:0.05 0.05 0.05; dur:1000; easing: easeOutElastic');
+      // показываем модель
+      model.setAttribute('visible', 'true');
 
-      // Сразу включаем анимацию GLTF
+      // плавное появление через scale (0 → 0.05)
+      model.setAttribute('animation', 'property: scale; from:0 0 0; to:0.05 0.05 0.05; dur:1000; easing:easeOutElastic');
+
+      // Перезапускаем анимацию GLTF
       const mixer = model.components['animation-mixer'];
       if(mixer){
-        // Перезапускаем все клипы
         mixer.stop();
         mixer.play();
       }
     });
-  }, 5000);
+  }, 5000); // задержка 5 секунд
 };
 </script>
 
