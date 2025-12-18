@@ -2,107 +2,92 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — STABLE FIX</title>
+<title>WebAR — Fixed Copy</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
-
-<style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden}
-#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:10;background:#000}
-#start button{padding:16px 26px;font-size:16px;border-radius:10px;border:none}
-#status{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);
-background:rgba(0,0,0,.6);color:#fff;padding:8px 14px;border-radius:6px;display:none;z-index:11}
-</style>
 </head>
-
 <body>
 
-<div id="start"><button id="startBtn">Запустить AR</button></div>
-<div id="status">Наведи камеру на маркер</div>
-
 <a-scene
-  mindar-image="imageTargetSrc:https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind;autoStart:false;"
+  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:true;"
   vr-mode-ui="enabled:false"
   device-orientation-permission-ui="enabled:false"
-  renderer="alpha:true"
-  embedded>
+  renderer="alpha:true">
 
   <a-camera look-controls="enabled:false"></a-camera>
+
+  <!-- Маркер с временными моделями -->
+  <a-entity id="marker" mindar-image-target="targetIndex:0">
+    <a-entity id="tempLeft" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+              scale="0.05 0.05 0.05"
+              visible="false"
+              animation-mixer="clip:*; loop:repeat">
+    </a-entity>
+    <a-entity id="tempRight" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+              scale="0.05 0.05 0.05"
+              visible="false"
+              animation-mixer="clip:*; loop:repeat">
+    </a-entity>
+  </a-entity>
+
+  <!-- Независимые копии вне маркера -->
+  <a-entity id="fixedLeft" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+            scale="0.05 0.05 0.05"
+            visible="false"
+            animation-mixer="clip:*; loop:repeat">
+  </a-entity>
+
+  <a-entity id="fixedRight" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+            scale="0.05 0.05 0.05"
+            visible="false"
+            animation-mixer="clip:*; loop:repeat">
+  </a-entity>
 
 </a-scene>
 
 <script>
-const scene = document.querySelector('a-scene');
-const status = document.getElementById('status');
-const startBtn = document.getElementById('startBtn');
-const startScreen = document.getElementById('start');
+const marker = document.getElementById('marker');
+const tempLeft = document.getElementById('tempLeft');
+const tempRight = document.getElementById('tempRight');
+const fixedLeft = document.getElementById('fixedLeft');
+const fixedRight = document.getElementById('fixedRight');
 
-const MARKERS = 6;
+marker.addEventListener('targetFound', () => {
+  // показать временные модели внутри маркера
+  tempLeft.setAttribute('visible', true);
+  tempRight.setAttribute('visible', true);
 
-function createMarker(i){
-  const marker = document.createElement('a-entity');
-  marker.setAttribute('mindar-image-target',`targetIndex:${i}`);
-  scene.appendChild(marker);
+  // получить мировые координаты
+  const worldPosL = new THREE.Vector3();
+  const worldQuatL = new THREE.Quaternion();
+  tempLeft.object3D.getWorldPosition(worldPosL);
+  tempLeft.object3D.getWorldQuaternion(worldQuatL);
 
-  const content = document.createElement('a-entity');
+  const worldPosR = new THREE.Vector3();
+  const worldQuatR = new THREE.Quaternion();
+  tempRight.object3D.getWorldPosition(worldPosR);
+  tempRight.object3D.getWorldQuaternion(worldQuatR);
 
-  const left = document.createElement('a-entity');
-  left.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  left.setAttribute('position','-0.5 -0.5 0');
-  left.setAttribute('scale','0.05 0.05 0.05');
-  left.setAttribute('animation-mixer','');
+  // перенести в независимые копии
+  fixedLeft.object3D.position.copy(worldPosL);
+  fixedLeft.object3D.quaternion.copy(worldQuatL);
+  fixedRight.object3D.position.copy(worldPosR);
+  fixedRight.object3D.quaternion.copy(worldQuatR);
 
-  const right = document.createElement('a-entity');
-  right.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  right.setAttribute('position','0.5 -0.5 0');
-  right.setAttribute('scale','0.05 0.05 0.05');
-  right.setAttribute('animation-mixer','');
+  fixedLeft.setAttribute('visible', true);
+  fixedRight.setAttribute('visible', true);
 
-  content.appendChild(left);
-  content.appendChild(right);
-  marker.appendChild(content);
+  // скрыть временные модели внутри маркера
+  tempLeft.setAttribute('visible', false);
+  tempRight.setAttribute('visible', false);
+});
 
-  let spawned = false;
-
-  marker.addEventListener('targetFound',()=>{
-    if(spawned) return;
-    spawned = true;
-
-    // берём МИРОВУЮ позицию маркера
-    marker.object3D.updateMatrixWorld(true);
-
-    const pos = new THREE.Vector3();
-    const quat = new THREE.Quaternion();
-
-    marker.object3D.getWorldPosition(pos);
-    marker.object3D.getWorldQuaternion(quat);
-
-    // создаём КОПИЮ
-    const fixed = content.cloneNode(true);
-    scene.appendChild(fixed);
-
-    fixed.object3D.position.copy(pos);
-    fixed.object3D.quaternion.copy(quat);
-
-    status.textContent = 'Модели зафиксированы';
-  });
-}
-
-for(let i=0;i<MARKERS;i++) createMarker(i);
-
-startBtn.onclick = async ()=>{
-  startBtn.disabled = true;
-  startScreen.style.display='none';
-  status.style.display='block';
-
-  const mindar = scene.systems['mindar-image-system'];
-  await mindar.start();
-};
+marker.addEventListener('targetLost', () => {
+  // НЕ скрываем — копии остаются навсегда
+});
 </script>
 
 </body>
