@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 781222</title>
+<title>WebAR — 1222</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -175,6 +175,17 @@ AFRAME.registerComponent('soft-stabilizer', {
       for (let i = 0; i < 5; i++) {
         this.positionHistory.push(this.stablePosition.clone());
       }
+      // Устанавливаем позицию и видимость
+      dst.position.set(
+        this.stablePosition.x,
+        this.stablePosition.y,
+        this.stablePosition.z
+      );
+      this.el.setAttribute('visible', true);
+      this.isVisible = true;
+      // Сбрасываем время обновления, чтобы не обновлять сразу
+      this.lastUpdateTime = currentTime;
+      console.log('soft-stabilizer: переинициализация завершена, видимость установлена');
     }
     
     const currentTime = time || performance.now();
@@ -183,11 +194,19 @@ AFRAME.registerComponent('soft-stabilizer', {
     // ВСЕГДА используем стабильную позицию (не позицию маркера напрямую)
     // Это гарантирует, что модель не будет дрожать между обновлениями
     // Применяем КАЖДЫЙ КАДР, чтобы перезаписать любые изменения от MindAR
+    // ВАЖНО: используем ЛОКАЛЬНУЮ позицию относительно маркера, а не мировую!
     if (this.stablePosition) {
+      // Преобразуем мировую позицию в локальную относительно маркера
+      const markerWorldPos = new THREE.Vector3();
+      src.getWorldPosition(markerWorldPos);
+      
+      // Вычисляем локальную позицию (относительно маркера)
+      const localPos = new THREE.Vector3().subVectors(this.stablePosition, markerWorldPos);
+      
       dst.position.set(
-        this.stablePosition.x,
-        this.stablePosition.y,
-        this.stablePosition.z
+        localPos.x,
+        localPos.y,
+        localPos.z
       );
     }
     
@@ -224,6 +243,12 @@ AFRAME.registerComponent('soft-stabilizer', {
         // Применяем сглаживание для плавного перехода
         this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
         console.log(`  Новая стабильная позиция:`, this.stablePosition);
+        // Обновляем позицию модели
+        dst.position.set(
+          this.stablePosition.x,
+          this.stablePosition.y,
+          this.stablePosition.z
+        );
       } else {
         // Если движение недостаточно большое - не обновляем позицию
         console.log(`✗ Позиция НЕ обновлена: расстояние = ${distance.toFixed(3)} < порог ${this.data.minMoveDistance}`);
@@ -419,6 +444,18 @@ function createMarker(index) {
     leftModel.setAttribute('visible', true);
     rightModel.setAttribute('visible', true);
     status.textContent = `Маркер ${index} найден`;
+    
+    // Дополнительная проверка видимости через небольшую задержку
+    setTimeout(() => {
+      console.log(`Маркер ${index}: проверка видимости после targetFound:`, {
+        marker: marker.getAttribute('visible'),
+        content: content.getAttribute('visible'),
+        leftWrapper: leftWrapper.getAttribute('visible'),
+        rightWrapper: rightWrapper.getAttribute('visible'),
+        leftModel: leftModel.getAttribute('visible'),
+        rightModel: rightModel.getAttribute('visible')
+      });
+    }, 100);
   });
 
   marker.addEventListener('targetLost', ()=>{
