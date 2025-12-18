@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — аркеров, 2 модели, сглаживание</title>
+<title>WebAR — шаговое обновление моделей</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -15,23 +15,9 @@
 
 <style>
 html, body { margin:0; width:100%; height:100%; overflow:hidden; }
-#start {
-  position:fixed; inset:0; background:#000;
-  display:flex; align-items:center; justify-content:center;
-  z-index:10;
-}
-#start button {
-  padding:16px 26px; font-size:16px;
-  border-radius:10px; border:none;
-}
-#status {
-  position:fixed; bottom:12px; left:50%;
-  transform:translateX(-50%);
-  background:rgba(0,0,0,.6);
-  color:#fff; padding:8px 12px;
-  border-radius:6px; z-index:11;
-  display:none;
-}
+#start { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:10; }
+#start button { padding:16px 26px; font-size:16px; border-radius:10px; border:none; }
+#status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.6); color:#fff; padding:8px 12px; border-radius:6px; z-index:11; display:none; }
 </style>
 </head>
 <body>
@@ -52,53 +38,16 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <!-- Музыка -->
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
 
-  <!-- Маркеры и модели -->
-  <a-entity mindar-image-target="targetIndex:0" id="marker0">
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-              position="-0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-              position="0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-  </a-entity>
+  <!-- Скрытые маркеры для получения координат -->
+  <a-entity id="marker0" mindar-image-target="targetIndex:0" visible="false"></a-entity>
+  <a-entity id="marker1" mindar-image-target="targetIndex:1" visible="false"></a-entity>
+  <a-entity id="marker2" mindar-image-target="targetIndex:2" visible="false"></a-entity>
+  <a-entity id="marker3" mindar-image-target="targetIndex:3" visible="false"></a-entity>
+  <a-entity id="marker4" mindar-image-target="targetIndex:4" visible="false"></a-entity>
+  <a-entity id="marker5" mindar-image-target="targetIndex:5" visible="false"></a-entity>
 
-  <a-entity mindar-image-target="targetIndex:1" id="marker1">
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-              position="-0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-              position="0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-  </a-entity>
-
-  <a-entity mindar-image-target="targetIndex:2" id="marker2">
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-              position="-0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-              position="0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-  </a-entity>
-
-  <a-entity mindar-image-target="targetIndex:3" id="marker3">
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-              position="-0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-              position="0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-  </a-entity>
-
-  <a-entity mindar-image-target="targetIndex:4" id="marker4">
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-              position="-0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-              position="0.5 -0.5 0" scale="0.05 0.05 0.05"
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-  </a-entity>
-
-  <a-entity mindar-image-target="targetIndex:5" id="marker5">
+  <!-- Контейнер моделей вне маркера -->
+  <a-entity id="modelsContainer" position="0 0 -2">
     <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
               position="-0.5 -0.5 0" scale="0.05 0.05 0.05"
               animation-mixer="clip:*; loop:repeat"></a-entity>
@@ -115,6 +64,19 @@ const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 const music = document.getElementById('music');
 
+const modelsContainer = document.getElementById('modelsContainer');
+const markers = [
+  document.getElementById('marker0'),
+  document.getElementById('marker1'),
+  document.getElementById('marker2'),
+  document.getElementById('marker3'),
+  document.getElementById('marker4'),
+  document.getElementById('marker5')
+];
+
+let lastPositions = markers.map(() => new THREE.Vector3());
+const step = 1; // шаг обновления позиции
+
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
   startScreen.style.display = 'none';
@@ -125,46 +87,22 @@ startBtn.addEventListener('click', async () => {
 
   try {
     await mindar.start();
+
+    // Включаем музыку
     if(music.components.sound) music.components.sound.playSound();
 
-    // Получаем все маркеры
-    const markers = [];
-    for(let i=0;i<6;i++) markers.push(document.getElementById('marker'+i));
-
-    markers.forEach(marker => {
-      const models = Array.from(marker.children);
-      models.forEach(m => m.setAttribute('visible', false));
-
-      // Временные объекты для сглаживания
-      const targetPos = new THREE.Vector3();
-      const currentPos = models.map(()=>new THREE.Vector3());
-      const targetQuat = new THREE.Quaternion();
-      const currentQuat = models.map(()=>new THREE.Quaternion());
-
-      marker.addEventListener('targetFound', () => {
-        models.forEach(m => m.setAttribute('visible', true));
-        status.textContent = 'Маркер найден';
-      });
-
-      marker.addEventListener('targetLost', () => {
-        models.forEach(m => m.setAttribute('visible', false));
-        status.textContent = 'Наведи камеру на маркер';
-      });
-
-      scene.addEventListener('frame', () => {
+    scene.addEventListener('frame', () => {
+      markers.forEach((marker, i) => {
         if(marker.object3D.visible){
-          models.forEach((m,i) => {
-            marker.object3D.getWorldPosition(targetPos);
-            targetQuat.copy(marker.object3D.getWorldQuaternion(new THREE.Quaternion()));
+          const pos = new THREE.Vector3();
+          marker.object3D.getWorldPosition(pos);
 
-            // Сглаживание позиции
-            currentPos[i].lerp(targetPos, 0.2);
-            m.object3D.position.copy(currentPos[i]);
-
-            // Сглаживание вращения
-            currentQuat[i].slerp(targetQuat, 0.2);
-            m.object3D.quaternion.copy(currentQuat[i]);
-          });
+          // шаговое обновление позиции
+          if(pos.distanceTo(lastPositions[i]) > step){
+            modelsContainer.object3D.position.copy(pos);
+            lastPositions[i].copy(pos);
+            status.textContent = `Маркер ${i} найден`;
+          }
         }
       });
     });
