@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 8881222</title>
+<title>WebAR — 1222</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -85,6 +85,24 @@ AFRAME.registerComponent('soft-stabilizer', {
     this.positionFrozen = false; // Флаг полной заморозки позиции
   },
   tick(time) {
+    // ЕСЛИ позиция заморожена - принудительно фиксируем позицию каждый кадр
+    if (this.positionFrozen) {
+      const dst = this.el.object3D;
+      // Принудительно устанавливаем позицию на 0,0,0 каждый кадр
+      // Это перезаписывает любые изменения от MindAR
+      // ВАЖНО: делаем это БЕЗ проверки, чтобы гарантировать фиксацию
+      dst.position.set(0, 0, 0);
+      if (this.data.lockRot) {
+        dst.quaternion.set(0, 0, 0, 1);
+      }
+      // Обновляем матрицу вручную для гарантии применения
+      // Используем updateMatrixWorld для обновления мировой матрицы
+      dst.updateMatrix();
+      // Дополнительно: блокируем обновление от родителя
+      dst.matrixWorldNeedsUpdate = false;
+      return; // Выходим после фиксации позиции
+    }
+    
     this.tickCount++;
     // Логируем каждые 60 кадров (примерно раз в секунду при 60 FPS)
     if (this.tickCount % 60 === 0) {
@@ -150,11 +168,8 @@ AFRAME.registerComponent('soft-stabilizer', {
       for (let i = 0; i < 5; i++) {
         this.positionHistory.push(this.stablePosition.clone());
       }
-      dst.position.set(
-        this.stablePosition.x,
-        this.stablePosition.y,
-        this.stablePosition.z
-      );
+      // Устанавливаем позицию на 0,0,0 относительно маркера (не мировую позицию!)
+      dst.position.set(0, 0, 0);
       console.log('soft-stabilizer: установлена стабильная позиция:', this.stablePosition);
       this.initialized = true;
       this.lastUpdateTime = time || performance.now();
@@ -166,6 +181,13 @@ AFRAME.registerComponent('soft-stabilizer', {
         this.positionFrozen = true;
         // Блокируем автоматическое обновление матрицы
         dst.matrixAutoUpdate = false;
+        // Устанавливаем позицию на 0,0,0 и обновляем матрицу вручную
+        dst.position.set(0, 0, 0);
+        dst.quaternion.set(0, 0, 0, 1);
+        dst.scale.set(1, 1, 1);
+        dst.updateMatrix();
+        // Дополнительно: блокируем обновление матрицы от родителя
+        dst.matrixWorldNeedsUpdate = false;
         console.log('soft-stabilizer: позиция ЗАМОРОЖЕНА на 0,0,0, matrixAutoUpdate = false');
       }
       return;
@@ -200,31 +222,22 @@ AFRAME.registerComponent('soft-stabilizer', {
       if (this.data.freezeAfterInit) {
         this.positionFrozen = true;
         dst.matrixAutoUpdate = false;
-        console.log('soft-stabilizer: переинициализация завершена, позиция ЗАМОРОЖЕНА');
+        // Устанавливаем позицию на 0,0,0 и обновляем матрицу вручную
+        dst.position.set(0, 0, 0);
+        dst.updateMatrix();
+        dst.matrixWorldNeedsUpdate = false;
+        console.log('soft-stabilizer: переинициализация завершена, позиция ЗАМОРОЖЕНА на 0,0,0');
       }
       return; // Выходим, чтобы не применять позицию дальше
     }
     
     // ПОЛНАЯ БЛОКИРОВКА ПОЗИЦИИ после инициализации
     // Это гарантирует, что модель НЕ будет дрожать вообще
-    if (this.stablePosition) {
-      // Если позиция заморожена - ПОЛНОСТЬЮ блокируем её и выходим
-      if (this.positionFrozen) {
-        // Позиция уже заморожена на 0,0,0 - НЕ обновляем её вообще
-        // matrixAutoUpdate = false уже установлен, поэтому позиция не изменится
-        return; // Выходим сразу - не делаем никаких обновлений
-      }
-      
-      // Если не заморожена - обычная логика (но это не должно происходить при freezeAfterInit=true)
+    // Если позиция заморожена - мы уже вышли в начале функции, так что сюда не дойдем
+    if (this.stablePosition && !this.positionFrozen) {
+      // Если не заморожена - обычная логика
       dst.position.set(0, 0, 0);
       dst.updateMatrix();
-    }
-    
-    // Обновляем только с заданным интервалом (например, каждые 10 секунд)
-    // НО: если позиция заморожена - НЕ обновляем вообще
-    if (this.positionFrozen) {
-      // Позиция заморожена - полностью пропускаем обновление
-      return;
     }
     
     if (timeSinceUpdate >= this.data.updateInterval) {
