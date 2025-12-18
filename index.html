@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1</title>
+<title>WebAR — 1222</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -86,8 +86,10 @@ AFRAME.registerComponent('soft-stabilizer', {
     const src = parent.object3D;
     const dst = this.el.object3D;
 
-    // Проверяем видимость маркера
-    const markerVisible = parent.getAttribute('visible') !== false;
+    // Проверяем видимость маркера через событие или атрибут
+    const markerVisible = parent.getAttribute('visible') !== false && 
+                         src.position.x !== undefined && 
+                         !isNaN(src.position.x);
     
     if (!markerVisible) {
       this.el.setAttribute('visible', false);
@@ -102,6 +104,7 @@ AFRAME.registerComponent('soft-stabilizer', {
 
     // Инициализация при первом появлении маркера
     if (!this.initialized) {
+      console.log('Инициализация стабилизатора, позиция маркера:', src.position);
       this.initialY = src.position.y;
       this.stablePosition = new THREE.Vector3(
         src.position.x,
@@ -110,18 +113,21 @@ AFRAME.registerComponent('soft-stabilizer', {
       );
       this.targetPosition = this.stablePosition.clone();
       dst.position.copy(this.stablePosition);
+      console.log('Установлена стабильная позиция:', this.stablePosition);
       this.initialized = true;
-      this.lastUpdateTime = time;
+      this.lastUpdateTime = time || 0;
       
-      if (!this.isVisible) {
-        this.el.setAttribute('visible', true);
-        this.isVisible = true;
-      }
+      // ВСЕГДА показываем контент при инициализации
+      this.el.setAttribute('visible', true);
+      this.isVisible = true;
+      console.log('Контент показан, видимость:', this.el.getAttribute('visible'));
       return;
     }
     
     // Обновляем позицию только с заданным интервалом
-    const timeSinceUpdate = time - this.lastUpdateTime;
+    const currentTime = time || performance.now();
+    const timeSinceUpdate = currentTime - this.lastUpdateTime;
+    
     if (timeSinceUpdate >= this.data.updateInterval) {
       // Получаем текущую позицию маркера
       const currentMarkerPos = new THREE.Vector3(
@@ -141,19 +147,28 @@ AFRAME.registerComponent('soft-stabilizer', {
       // Применяем очень медленное сглаживание к стабильной позиции
       this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
       
-      this.lastUpdateTime = time;
+      this.lastUpdateTime = currentTime;
     }
     
     // ВСЕГДА используем стабильную позицию (не позицию маркера напрямую)
-    dst.position.copy(this.stablePosition);
+    if (this.stablePosition) {
+      dst.position.copy(this.stablePosition);
+    } else {
+      // Если стабильная позиция не установлена, используем позицию маркера
+      dst.position.set(
+        src.position.x,
+        this.data.lockY ? (this.initialY || src.position.y) : src.position.y,
+        src.position.z
+      );
+    }
     
     // Блокируем ротацию от родителя
     if (this.data.lockRot) {
       dst.quaternion.set(0, 0, 0, 1);
     }
 
-    // Показываем контент
-    if (!this.isVisible) {
+    // ВСЕГДА показываем контент если маркер виден
+    if (markerVisible && !this.isVisible) {
       this.el.setAttribute('visible', true);
       this.isVisible = true;
     }
