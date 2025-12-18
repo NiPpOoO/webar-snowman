@@ -2,14 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 2Stable Marker Fix</title>
+<title>MindAR — DIAGNOSTIC</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
-
-<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
@@ -19,6 +15,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  background: #000;
 }
 #start {
   position: fixed;
@@ -32,8 +29,6 @@ html, body {
 #start button {
   padding: 16px 26px;
   font-size: 16px;
-  border-radius: 10px;
-  border: none;
 }
 #status {
   position: fixed;
@@ -42,10 +37,10 @@ html, body {
   transform: translateX(-50%);
   background: rgba(0,0,0,.6);
   color: #fff;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 6px;
-  z-index: 11;
   display: none;
+  z-index: 11;
 }
 </style>
 </head>
@@ -53,128 +48,50 @@ html, body {
 <body>
 
 <div id="start">
-  <button id="startBtn">Запустить AR</button>
+  <button id="startBtn">START AR</button>
 </div>
-<div id="status">Наведи камеру на маркер</div>
+<div id="status">Waiting...</div>
 
 <a-scene
-  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
+  mindar-image="imageTargetSrc: https://mind-ar-js.github.io/Examples/image-tracking/assets/card-example/card.mind; autoStart:false;"
   vr-mode-ui="enabled:false"
   device-orientation-permission-ui="enabled:true"
-  renderer="alpha:true; precision:lowp">
+  renderer="alpha:true">
 
   <a-camera look-controls="enabled:false"></a-camera>
 
-  <!-- МАРКЕР (НЕ СКРЫТЫЙ!) -->
-  <a-entity
-    id="marker"
-    mindar-image-target="targetIndex:0">
-  </a-entity>
-
-  <!-- МОДЕЛИ В МИРЕ -->
-  <a-entity id="modelContainer" visible="false">
-
-    <a-entity
-      gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-      scale="0.05 0.05 0.05"
-      animation-mixer="clip:*; loop:repeat">
-    </a-entity>
-
-    <a-entity
-      gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-      position="0.5 0 0"
-      scale="0.05 0.05 0.05"
-      animation-mixer="clip:*; loop:repeat">
-    </a-entity>
-
+  <a-entity mindar-image-target="targetIndex:0">
+    <!-- НЕЛЬЗЯ НЕ УВИДЕТЬ -->
+    <a-box
+      color="red"
+      depth="0.2"
+      height="0.2"
+      width="0.2"
+      position="0 0 0.1">
+    </a-box>
   </a-entity>
 
 </a-scene>
 
 <script>
+const scene = document.querySelector('a-scene');
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 
-const marker = document.getElementById('marker');
-const modelContainer = document.getElementById('modelContainer');
-const scene = document.querySelector('a-scene');
-
-let markerFound = false;
-
-// THREE helpers
-const targetPos = new THREE.Vector3();
-const currentPos = new THREE.Vector3();
-const velocity = new THREE.Vector3();
-
-const targetQuat = new THREE.Quaternion();
-const currentQuat = new THREE.Quaternion();
-
-// ==== АДАПТАЦИЯ ПОД iOS ====
-const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-const iosVersion = (() => {
-  const m = navigator.userAgent.match(/OS (\d+)_/);
-  return m ? parseInt(m[1]) : 99;
-})();
-
-const POSITION_SMOOTH = isIOS && iosVersion < 15 ? 0.12 : 0.18;
-const ROTATION_SMOOTH = 0.1;
-const DEAD_ZONE = 0.003;
-const MAX_SPEED = 0.04;
-
-// ==== START AR ====
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
   startScreen.style.display = 'none';
   status.style.display = 'block';
+  status.textContent = 'Starting AR...';
 
   try {
     await scene.systems['mindar-image-system'].start();
+    status.textContent = 'Point at MindAR card';
   } catch (e) {
-    alert('Ошибка доступа к камере');
+    status.textContent = 'FAILED TO START';
     console.error(e);
   }
-});
-
-// ==== MARKER EVENTS ====
-marker.addEventListener('targetFound', () => {
-  if (markerFound) return;
-
-  markerFound = true;
-  status.textContent = 'Маркер найден';
-
-  marker.object3D.getWorldPosition(targetPos);
-  marker.object3D.getWorldQuaternion(targetQuat);
-
-  currentPos.copy(targetPos);
-  currentQuat.copy(targetQuat);
-
-  modelContainer.object3D.position.copy(currentPos);
-  modelContainer.object3D.quaternion.copy(currentQuat);
-  modelContainer.object3D.visible = true;
-});
-
-marker.addEventListener('targetLost', () => {
-  status.textContent = 'Наведи камеру на маркер';
-});
-
-// ==== STABLE UPDATE LOOP ====
-scene.addEventListener('frame', () => {
-  if (!markerFound) return;
-
-  marker.object3D.getWorldPosition(targetPos);
-  marker.object3D.getWorldQuaternion(targetQuat);
-
-  velocity.subVectors(targetPos, currentPos);
-
-  if (velocity.length() > DEAD_ZONE) {
-    velocity.clampLength(0, MAX_SPEED);
-    currentPos.addScaledVector(velocity, POSITION_SMOOTH);
-    modelContainer.object3D.position.copy(currentPos);
-  }
-
-  currentQuat.slerp(targetQuat, ROTATION_SMOOTH);
-  modelContainer.object3D.quaternion.copy(currentQuat);
 });
 </script>
 
