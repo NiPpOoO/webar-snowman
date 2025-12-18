@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1222</title>
+<title>WebAR — 322</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -161,6 +161,9 @@ AFRAME.registerComponent('soft-stabilizer', {
       return;
     }
     
+    const currentTime = time || performance.now();
+    const timeSinceUpdate = currentTime - this.lastUpdateTime;
+    
     // Если инициализирован, но stablePosition null - переинициализируем
     if (this.initialized && !this.stablePosition && isValidPos) {
       console.log('soft-stabilizer: переинициализация (stablePosition был null), позиция:', worldPos);
@@ -176,38 +179,24 @@ AFRAME.registerComponent('soft-stabilizer', {
         this.positionHistory.push(this.stablePosition.clone());
       }
       // Устанавливаем позицию и видимость
-      dst.position.set(
-        this.stablePosition.x,
-        this.stablePosition.y,
-        this.stablePosition.z
-      );
+      // ВАЖНО: используем локальную позицию (0,0,0 относительно маркера)
+      dst.position.set(0, 0, 0);
       this.el.setAttribute('visible', true);
       this.isVisible = true;
       // Сбрасываем время обновления, чтобы не обновлять сразу
       this.lastUpdateTime = currentTime;
       console.log('soft-stabilizer: переинициализация завершена, видимость установлена');
+      return; // Выходим, чтобы не применять позицию дальше
     }
-    
-    const currentTime = time || performance.now();
-    const timeSinceUpdate = currentTime - this.lastUpdateTime;
     
     // ВСЕГДА используем стабильную позицию (не позицию маркера напрямую)
     // Это гарантирует, что модель не будет дрожать между обновлениями
     // Применяем КАЖДЫЙ КАДР, чтобы перезаписать любые изменения от MindAR
-    // ВАЖНО: используем ЛОКАЛЬНУЮ позицию относительно маркера, а не мировую!
+    // ВАЖНО: content должен быть в позиции 0,0,0 относительно маркера для стабильности
     if (this.stablePosition) {
-      // Преобразуем мировую позицию в локальную относительно маркера
-      const markerWorldPos = new THREE.Vector3();
-      src.getWorldPosition(markerWorldPos);
-      
-      // Вычисляем локальную позицию (относительно маркера)
-      const localPos = new THREE.Vector3().subVectors(this.stablePosition, markerWorldPos);
-      
-      dst.position.set(
-        localPos.x,
-        localPos.y,
-        localPos.z
-      );
+      // Для стабильности просто фиксируем позицию на 0,0,0 относительно маркера
+      // Это означает, что модели всегда в центре маркера, без дрожания
+      dst.position.set(0, 0, 0);
     }
     
     // Обновляем только с заданным интервалом (например, каждые 5 секунд)
