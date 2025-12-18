@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — шаговое обновление моделей</title>
+<title>WebAR — 6 маркеров, 2 модели, следят за маркером</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -15,9 +15,19 @@
 
 <style>
 html, body { margin:0; width:100%; height:100%; overflow:hidden; }
-#start { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:10; }
-#start button { padding:16px 26px; font-size:16px; border-radius:10px; border:none; }
-#status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.6); color:#fff; padding:8px 12px; border-radius:6px; z-index:11; display:none; }
+#start {
+  position:fixed; inset:0; background:#000;
+  display:flex; align-items:center; justify-content:center; z-index:10;
+}
+#start button {
+  padding:16px 26px; font-size:16px; border-radius:10px; border:none;
+}
+#status {
+  position:fixed; bottom:12px; left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.6); color:#fff;
+  padding:8px 12px; border-radius:6px; z-index:11;
+}
 </style>
 </head>
 <body>
@@ -38,14 +48,6 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <!-- Музыка -->
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
 
-  <!-- Скрытые маркеры для получения координат -->
-  <a-entity id="marker0" mindar-image-target="targetIndex:0" visible="false"></a-entity>
-  <a-entity id="marker1" mindar-image-target="targetIndex:1" visible="false"></a-entity>
-  <a-entity id="marker2" mindar-image-target="targetIndex:2" visible="false"></a-entity>
-  <a-entity id="marker3" mindar-image-target="targetIndex:3" visible="false"></a-entity>
-  <a-entity id="marker4" mindar-image-target="targetIndex:4" visible="false"></a-entity>
-  <a-entity id="marker5" mindar-image-target="targetIndex:5" visible="false"></a-entity>
-
   <!-- Контейнер моделей вне маркера -->
   <a-entity id="modelsContainer" position="0 0 -2">
     <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
@@ -56,6 +58,14 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
               animation-mixer="clip:*; loop:repeat"></a-entity>
   </a-entity>
 
+  <!-- Маркеры -->
+  <a-entity mindar-image-target="targetIndex:0" visible="false"></a-entity>
+  <a-entity mindar-image-target="targetIndex:1" visible="false"></a-entity>
+  <a-entity mindar-image-target="targetIndex:2" visible="false"></a-entity>
+  <a-entity mindar-image-target="targetIndex:3" visible="false"></a-entity>
+  <a-entity mindar-image-target="targetIndex:4" visible="false"></a-entity>
+  <a-entity mindar-image-target="targetIndex:5" visible="false"></a-entity>
+
 </a-scene>
 
 <script>
@@ -63,19 +73,11 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 const music = document.getElementById('music');
-
 const modelsContainer = document.getElementById('modelsContainer');
-const markers = [
-  document.getElementById('marker0'),
-  document.getElementById('marker1'),
-  document.getElementById('marker2'),
-  document.getElementById('marker3'),
-  document.getElementById('marker4'),
-  document.getElementById('marker5')
-];
 
-let lastPositions = markers.map(() => new THREE.Vector3());
-const step = 1; // шаг обновления позиции
+let lastPosition = new THREE.Vector3();
+const step = 0.5; // минимальное расстояние для обновления позиции
+const markers = document.querySelectorAll('[mindar-image-target]');
 
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
@@ -88,23 +90,34 @@ startBtn.addEventListener('click', async () => {
   try {
     await mindar.start();
 
-    // Включаем музыку
     if(music.components.sound) music.components.sound.playSound();
 
+    // Обновляем позицию моделей на каждой рамке
     scene.addEventListener('frame', () => {
-      markers.forEach((marker, i) => {
+      let found = false;
+      markers.forEach(marker => {
         if(marker.object3D.visible){
           const pos = new THREE.Vector3();
           marker.object3D.getWorldPosition(pos);
 
-          // шаговое обновление позиции
-          if(pos.distanceTo(lastPositions[i]) > step){
+          // Обновляем только если шаг больше минимального
+          if(pos.distanceTo(lastPosition) > step){
             modelsContainer.object3D.position.copy(pos);
-            lastPositions[i].copy(pos);
-            status.textContent = `Маркер ${i} найден`;
+            lastPosition.copy(pos);
           }
+          found = true;
         }
       });
+      if(!found){
+        // маркер не найден, можно вернуть модели на стартовую позицию
+        modelsContainer.object3D.position.set(0,0,-2);
+      }
+    });
+
+    // Статус
+    markers.forEach(marker => {
+      marker.addEventListener('targetFound', ()=>status.textContent='Маркер найден');
+      marker.addEventListener('targetLost', ()=>status.textContent='Наведи камеру на маркер');
     });
 
   } catch(e){
