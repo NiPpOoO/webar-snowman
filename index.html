@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 2</title>
+<title>WebAR — 1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -62,19 +62,24 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 10; // Увеличено до 10 для поддержки всех маркеров
 
-// Компонент для полной стабилизации модели - полностью блокирует обновление позиции из родителя
+// Компонент для экстремальной стабилизации модели - обновляет только при больших изменениях
 AFRAME.registerComponent('soft-stabilizer', {
   schema: {
-    lockY: { default: true },     // Фиксировать вертикальную ось
-    lockRot: { default: true }    // Блокировать повороты полностью
+    lockY: { default: true },           // Фиксировать вертикальную ось
+    lockRot: { default: true },         // Блокировать повороты полностью
+    minMoveDistance: { default: 0.3 },  // Очень большой порог для обновления (0.3 единицы)
+    smoothing: { default: 0.02 },       // Очень медленное сглаживание
+    updateInterval: { default: 200 }    // Интервал обновления в мс
   },
   init() {
     this.isVisible = false;
     this.initialY = null;
-    this.fixedPosition = null; // Фиксированная позиция модели
+    this.stablePosition = null; // Стабильная позиция модели
+    this.targetPosition = null; // Целевая позиция для сглаживания
     this.initialized = false;
+    this.lastUpdateTime = 0;
   },
-  tick() {
+  tick(time) {
     const parent = this.el.parentEl;
     if (!parent) return;
 
@@ -89,42 +94,62 @@ AFRAME.registerComponent('soft-stabilizer', {
       this.isVisible = false;
       this.initialized = false;
       this.initialY = null;
-      this.fixedPosition = null;
+      this.stablePosition = null;
+      this.targetPosition = null;
+      this.lastUpdateTime = 0;
       return;
     }
 
-    // Инициализация при первом появлении маркера - фиксируем позицию НАВСЕГДА
+    // Инициализация при первом появлении маркера
     if (!this.initialized) {
       this.initialY = src.position.y;
-      // Просто копируем локальную позицию родителя
-      this.fixedPosition = new THREE.Vector3(
+      this.stablePosition = new THREE.Vector3(
         src.position.x,
         this.data.lockY ? this.initialY : src.position.y,
         src.position.z
       );
-      
-      dst.position.copy(this.fixedPosition);
+      this.targetPosition = this.stablePosition.clone();
+      dst.position.copy(this.stablePosition);
       this.initialized = true;
+      this.lastUpdateTime = time;
       
       if (!this.isVisible) {
         this.el.setAttribute('visible', true);
         this.isVisible = true;
       }
+      return;
     }
     
-    // ВСЕГДА используем фиксированную позицию и блокируем обновление из родителя
-    if (this.fixedPosition) {
-      // Полностью перезаписываем позицию, игнорируя любые изменения от родителя
-      dst.position.set(
-        this.fixedPosition.x,
-        this.fixedPosition.y,
-        this.fixedPosition.z
+    // Обновляем позицию только с заданным интервалом
+    const timeSinceUpdate = time - this.lastUpdateTime;
+    if (timeSinceUpdate >= this.data.updateInterval) {
+      // Получаем текущую позицию маркера
+      const currentMarkerPos = new THREE.Vector3(
+        src.position.x,
+        this.data.lockY ? this.initialY : src.position.y,
+        src.position.z
       );
       
-      // Блокируем ротацию от родителя
-      if (this.data.lockRot) {
-        dst.quaternion.set(0, 0, 0, 1); // Нет поворота
+      // Вычисляем расстояние от стабильной позиции до текущей позиции маркера
+      const distance = this.stablePosition.distanceTo(currentMarkerPos);
+      
+      // Обновляем целевую позицию ТОЛЬКО если изменение достаточно большое
+      if (distance >= this.data.minMoveDistance) {
+        this.targetPosition.copy(currentMarkerPos);
       }
+      
+      // Применяем очень медленное сглаживание к стабильной позиции
+      this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
+      
+      this.lastUpdateTime = time;
+    }
+    
+    // ВСЕГДА используем стабильную позицию (не позицию маркера напрямую)
+    dst.position.copy(this.stablePosition);
+    
+    // Блокируем ротацию от родителя
+    if (this.data.lockRot) {
+      dst.quaternion.set(0, 0, 0, 1);
     }
 
     // Показываем контент
@@ -205,7 +230,7 @@ function createMarker(index) {
   // Контейнер моделей с сглаживанием
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true');
+  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; minMoveDistance: 0.3; smoothing: 0.02; updateInterval: 200');
 
   // Модель слева
   const leftWrapper = document.createElement('a-entity');
