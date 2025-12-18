@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 11</title>
+<title>WebAR — Stable Update</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -62,67 +62,55 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
-AFRAME.registerComponent('soft-stabilizer', {
-  schema: {
-    pos: { default: 0.25 },
-    rot: { default: 0.25 }
-  },
-  tick() {
-    const parent = this.el.parentEl;
-    if (!parent) return;
-
-    const src = parent.object3D;
-    const dst = this.el.object3D;
-
-    dst.position.lerp(src.position, this.data.pos);
-    dst.quaternion.slerp(src.quaternion, this.data.rot);
-  }
-});
-
-// Функция создания маркера с моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контейнер моделей
-const content = document.createElement('a-entity');
-content.setAttribute('position','0 0 0');
-content.setAttribute('soft-stabilizer','');
+  // Контент внутри маркера (так гарантированно появится)
+  const content = document.createElement('a-entity');
+  content.setAttribute('visible', false);
 
-
-  // Модель слев
-  const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position','-0.5 -0.5 0');
+  // Левая модель
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
+  leftModel.setAttribute('position','-0.5 -0.5 0');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  leftWrapper.appendChild(leftModel);
-  content.appendChild(leftWrapper);
+  content.appendChild(leftModel);
 
-  // Модель справа
-  const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position','0.5 -0.5 0');
+  // Правая модель
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
+  rightModel.setAttribute('position','0.5 -0.5 0');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  rightWrapper.appendChild(rightModel);
-  content.appendChild(rightWrapper);
+  content.appendChild(rightModel);
 
   marker.appendChild(content);
 
-  marker.addEventListener('targetFound', ()=>{
+  let updateTimer = null;
+
+  marker.addEventListener('targetFound', () => {
     content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
+
+    // обновляем позицию каждые 10 секунд
+    updateTimer = setInterval(() => {
+      content.object3D.position.copy(marker.object3D.position);
+      content.object3D.quaternion.copy(marker.object3D.quaternion);
+    }, 10000);
   });
 
-  marker.addEventListener('targetLost', ()=>{
-    setTimeout(()=>{
+  marker.addEventListener('targetLost', () => {
+    setTimeout(() => {
       content.setAttribute('visible', false);
       status.textContent = 'Наведи камеру на маркер';
-    },200);
+      if (updateTimer) {
+        clearInterval(updateTimer);
+        updateTimer = null;
+      }
+    }, 200);
   });
 
   return marker;
@@ -140,7 +128,6 @@ startBtn.addEventListener('click', async ()=>{
   status.style.display='block';
 
   try {
-    // Ждём, пока сцена полностью загрузится
     if (!scene.hasLoaded) {
       await new Promise(resolve =>
         scene.addEventListener('loaded', resolve, { once:true })
@@ -150,15 +137,13 @@ startBtn.addEventListener('click', async ()=>{
     const mindar = scene.systems['mindar-image-system'];
     await mindar.start();
 
-    document.getElementById('music')
-      .components.sound.playSound();
+    document.getElementById('music').components.sound.playSound();
 
   } catch(e){
     alert('Камера недоступна или отказано в доступе.');
     console.error(e);
   }
 });
-
 </script>
 
 </body>
