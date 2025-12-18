@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 4422</title>
+<title>WebAR — 1222</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -109,14 +109,31 @@ AFRAME.registerComponent('soft-stabilizer', {
       this.isVisible = false;
       // НЕ сбрасываем initialized - сохраняем позицию!
       // this.initialized = false; // ЗАКОММЕНТИРОВАНО
+      // НО проверяем, что stablePosition существует перед применением
+      if (this.stablePosition) {
+        dst.position.set(
+          this.stablePosition.x,
+          this.stablePosition.y,
+          this.stablePosition.z
+        );
+      }
       return;
     }
 
-    // Инициализация
+    // Инициализация - только когда маркер виден и имеет валидную позицию
     if (!this.initialized) {
       // Получаем мировую позицию маркера (более надежно)
       const worldPos = new THREE.Vector3();
       src.getWorldPosition(worldPos);
+      
+      // Проверяем, что позиция валидна (не все нули и не NaN)
+      const isValidPos = !isNaN(worldPos.x) && !isNaN(worldPos.y) && !isNaN(worldPos.z) &&
+                         (worldPos.x !== 0 || worldPos.y !== 0 || worldPos.z !== 0);
+      
+      if (!isValidPos) {
+        // Позиция еще не валидна, ждем следующего кадра
+        return;
+      }
       
       console.log('soft-stabilizer: инициализация, позиция маркера (local):', src.position, 'world:', worldPos);
       
@@ -160,6 +177,13 @@ AFRAME.registerComponent('soft-stabilizer', {
     
     // Обновляем только с заданным интервалом (например, каждые 5 секунд)
     if (timeSinceUpdate >= this.data.updateInterval) {
+      // Проверяем, что стабильная позиция установлена
+      if (!this.stablePosition) {
+        console.warn('soft-stabilizer: stablePosition is null, пропускаем обновление');
+        this.lastUpdateTime = currentTime;
+        return;
+      }
+      
       // Получаем мировую позицию маркера (более надежно, чем локальная)
       const worldPos = new THREE.Vector3();
       src.getWorldPosition(worldPos);
