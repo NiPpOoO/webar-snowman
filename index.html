@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1Fixed & Stable</title>
+<title>WebAR — Fixed Stable FINAL</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -19,6 +19,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  background: #000;
 }
 #start {
   position: fixed;
@@ -66,7 +67,6 @@ html, body {
 
   <a-camera look-controls="enabled:false"></a-camera>
 
-  <!-- Музыка -->
   <a-entity
     id="music"
     sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3);
@@ -94,7 +94,6 @@ function createMarker(index) {
   const content = document.createElement('a-entity');
   content.setAttribute('visible', 'false');
 
-  // ЛЕВАЯ МОДЕЛЬ
   const left = document.createElement('a-entity');
   left.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   left.setAttribute('position', '-0.5 -0.5 0');
@@ -102,7 +101,6 @@ function createMarker(index) {
   left.setAttribute('animation-mixer', '');
   content.appendChild(left);
 
-  // ПРАВАЯ МОДЕЛЬ
   const right = document.createElement('a-entity');
   right.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   right.setAttribute('position', '0.5 -0.5 0');
@@ -118,7 +116,6 @@ function createMarker(index) {
     if (fixed) return;
     fixed = true;
 
-    // ОБНОВЛЯЕМ МИРОВУЮ МАТРИЦУ
     content.object3D.updateMatrixWorld(true);
 
     const worldPos = new THREE.Vector3();
@@ -127,11 +124,10 @@ function createMarker(index) {
     content.object3D.getWorldPosition(worldPos);
     content.object3D.getWorldQuaternion(worldQuat);
 
-    // ОТВЯЗЫВАЕМ ОТ МАРКЕРА
+    // ❗ ВАЖНО: работаем с DOM, а не с object3D
     marker.removeChild(content);
-    scene.object3D.add(content.object3D);
+    scene.appendChild(content);
 
-    // ФИКСИРУЕМ В МИРЕ
     content.object3D.position.copy(worldPos);
     content.object3D.quaternion.copy(worldQuat);
     content.object3D.scale.set(1,1,1);
@@ -141,12 +137,10 @@ function createMarker(index) {
   });
 }
 
-// СОЗДАЁМ ВСЕ МАРКЕРЫ
 for (let i = 0; i < MARKERS_COUNT; i++) {
   createMarker(i);
 }
 
-// ЗАПУСК AR
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
   startScreen.style.display = 'none';
@@ -157,7 +151,7 @@ startBtn.addEventListener('click', async () => {
     await mindar.start();
     document.getElementById('music').components.sound.playSound();
   } catch (e) {
-    alert('Не удалось получить доступ к камере');
+    alert('Ошибка доступа к камере');
     console.error(e);
   }
 });
