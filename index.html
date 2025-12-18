@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1222</title>
+<title>WebAR — Fix1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -67,9 +67,9 @@ AFRAME.registerComponent('soft-stabilizer', {
   schema: {
     lockY: { default: true },           // Фиксировать вертикальную ось
     lockRot: { default: true },         // Блокировать повороты полностью
-    smoothing: { default: 0.05 },       // Очень медленное сглаживание (меньше = плавнее)
-    minMoveDistance: { default: 0.15 }, // Порог для обновления (в единицах)
-    updateInterval: { default: 100 }    // Интервал обновления в мс (меньше = плавнее)
+    smoothing: { default: 0.1 },       // Сглаживание при обновлении
+    minMoveDistance: { default: 0.5 },  // Порог для обновления (в единицах) - увеличен для больших движений
+    updateInterval: { default: 5000 }   // Интервал обновления в мс (5000 = 5 секунд)
   },
   init() {
     this.isVisible = false;
@@ -127,7 +127,7 @@ AFRAME.registerComponent('soft-stabilizer', {
     const currentTime = time || performance.now();
     const timeSinceUpdate = currentTime - this.lastUpdateTime;
     
-    // Обновляем только с заданным интервалом
+    // Обновляем только с заданным интервалом (например, каждые 5 секунд)
     if (timeSinceUpdate >= this.data.updateInterval) {
       const currentMarkerPos = new THREE.Vector3(
         src.position.x,
@@ -135,43 +135,27 @@ AFRAME.registerComponent('soft-stabilizer', {
         src.position.z
       );
       
-      // Медианный фильтр для отсечения выбросов
-      this.positionHistory.push(currentMarkerPos.clone());
-      if (this.positionHistory.length > 5) {
-        this.positionHistory.shift();
-      }
+      // Проверяем расстояние от текущей стабильной позиции до позиции маркера
+      const distance = this.stablePosition.distanceTo(currentMarkerPos);
       
-      // Вычисляем медиану по каждой оси
-      const sortedX = this.positionHistory.map(p => p.x).sort((a, b) => a - b);
-      const sortedY = this.positionHistory.map(p => p.y).sort((a, b) => a - b);
-      const sortedZ = this.positionHistory.map(p => p.z).sort((a, b) => a - b);
-      const medianPos = new THREE.Vector3(
-        sortedX[Math.floor(sortedX.length / 2)],
-        sortedY[Math.floor(sortedY.length / 2)],
-        sortedZ[Math.floor(sortedZ.length / 2)]
-      );
-      
-      // Проверяем расстояние от текущей стабильной позиции
-      const distance = this.stablePosition.distanceTo(medianPos);
-      
-      // Обновляем целевую позицию только если изменение достаточно большое
+      // Обновляем целевую позицию ТОЛЬКО если маркер сместился достаточно сильно
       if (distance >= this.data.minMoveDistance) {
-        this.targetPosition.copy(medianPos);
+        console.log(`Обновление позиции: расстояние = ${distance.toFixed(3)}, порог = ${this.data.minMoveDistance}`);
+        this.targetPosition.copy(currentMarkerPos);
+        // Применяем сглаживание для плавного перехода
+        this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
+      } else {
+        // Если движение недостаточно большое - не обновляем позицию
+        console.log(`Позиция не обновлена: расстояние = ${distance.toFixed(3)} < порог ${this.data.minMoveDistance}`);
       }
-      
-      // Применяем очень медленное сглаживание
-      this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
       
       this.lastUpdateTime = currentTime;
-      
-      // Применяем стабильную позицию ТОЛЬКО после обновления
+    }
+    
+    // ВСЕГДА используем стабильную позицию (не позицию маркера напрямую)
+    // Это гарантирует, что модель не будет дрожать между обновлениями
+    if (this.stablePosition) {
       dst.position.copy(this.stablePosition);
-    } else {
-      // Если не время обновлять - используем последнюю стабильную позицию (не обновляем)
-      // Это критично для устранения дрожания!
-      if (this.stablePosition) {
-        dst.position.copy(this.stablePosition);
-      }
     }
     
     // Блокируем ротацию
@@ -279,8 +263,8 @@ function createMarker(index) {
   // Контейнер моделей с сглаживанием
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  // МАКСИМАЛЬНАЯ стабилизация для устранения дрожания
-  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; minMoveDistance: 0.25; smoothing: 0.02; updateInterval: 150');
+  // Стабилизация с обновлением каждые 5 секунд и большим порогом отклонения
+  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; minMoveDistance: 0.5; smoothing: 0.1; updateInterval: 5000');
 
   // Модель слева
   const leftWrapper = document.createElement('a-entity');
