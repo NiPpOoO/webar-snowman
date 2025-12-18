@@ -2,11 +2,11 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 2</title>
+<title>WebAR — 1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
 <!-- MindAR -->
@@ -62,14 +62,15 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
-// Компонент для сглаживания дрожания модели с агрессивной фильтрацией шума
+// Компонент для сглаживания дрожания модели с экстремальной фильтрацией шума
 AFRAME.registerComponent('soft-stabilizer', {
   schema: {
-    pos: { default: 0.05 },  // Очень сильное сглаживание позиции
-    rot: { default: 0.05 },  // Очень сильное сглаживание ротации
-    minMove: { default: 0.01 },  // Большой порог для обновления позиции (фильтрация микро-дрожания)
-    minRot: { default: 0.02 },   // Большой порог для обновления ротации (предотвращает повороты)
-    lockY: { default: true }      // Фиксировать вертикальную ось
+    pos: { default: 0.02 },  // Экстремально сильное сглаживание позиции
+    rot: { default: 0.02 },  // Экстремально сильное сглаживание ротации
+    minMove: { default: 0.03 },  // Очень большой порог для обновления позиции
+    minRot: { default: 0.05 },   // Очень большой порог для обновления ротации (почти блокирует повороты)
+    lockY: { default: true },     // Фиксировать вертикальную ось
+    lockRot: { default: true }    // Блокировать повороты полностью
   },
   init() {
     // Сохраняем предыдущие значения для проверки изменений
@@ -77,6 +78,10 @@ AFRAME.registerComponent('soft-stabilizer', {
     this.lastRot = new THREE.Quaternion();
     this.isVisible = false;
     this.initialY = null;
+    this.initialRot = null;
+    // Буферы для экспоненциального сглаживания
+    this.smoothPos = new THREE.Vector3();
+    this.smoothRot = new THREE.Quaternion();
   },
   tick() {
     const parent = this.el.parentEl;
@@ -92,47 +97,57 @@ AFRAME.registerComponent('soft-stabilizer', {
       this.el.setAttribute('visible', false);
       this.isVisible = false;
       this.initialY = null;
+      this.initialRot = null;
       return;
     }
 
-    // Сохраняем начальную Y позицию при первом появлении
+    // Сохраняем начальные значения при первом появлении
     if (this.initialY === null) {
       this.initialY = src.position.y;
       this.lastPos.copy(src.position);
+      this.smoothPos.copy(src.position);
+    }
+    
+    if (this.initialRot === null) {
+      this.initialRot = src.quaternion.clone();
       this.lastRot.copy(src.quaternion);
+      this.smoothRot.copy(src.quaternion);
     }
 
-    // Вычисляем изменения по каждой оси отдельно
-    const posDeltaX = Math.abs(src.position.x - this.lastPos.x);
-    const posDeltaY = Math.abs(src.position.y - this.lastPos.y);
-    const posDeltaZ = Math.abs(src.position.z - this.lastPos.z);
+    // Вычисляем изменения
     const posDelta = src.position.distanceTo(this.lastPos);
-    
     const rotDelta = src.quaternion.angleTo(this.lastRot);
 
-    // Применяем очень агрессивное сглаживание позиции
+    // Экстремально агрессивное сглаживание позиции с двойной фильтрацией
     if (posDelta > this.data.minMove) {
-      // Создаем целевую позицию с фиксацией Y
+      // Первый уровень сглаживания - в буфер
       const targetPos = new THREE.Vector3(
         src.position.x,
         this.data.lockY ? this.initialY : src.position.y,
         src.position.z
       );
       
-      // Используем lerp для плавного перехода
-      dst.position.lerp(targetPos, this.data.pos);
+      this.smoothPos.lerp(targetPos, this.data.pos);
+      
+      // Второй уровень сглаживания - из буфера в финальную позицию
+      dst.position.lerp(this.smoothPos, this.data.pos);
       this.lastPos.copy(dst.position);
     } else {
-      // Игнорируем микро-изменения - оставляем позицию как есть
+      // Игнорируем микро-изменения полностью
       dst.position.copy(this.lastPos);
     }
 
-    // Очень агрессивное сглаживание ротации с большим порогом
-    if (rotDelta > this.data.minRot) {
-      dst.quaternion.slerp(src.quaternion, this.data.rot);
+    // Экстремально агрессивное сглаживание ротации
+    if (this.data.lockRot) {
+      // Полностью блокируем повороты - используем начальную ротацию
+      dst.quaternion.copy(this.initialRot);
+    } else if (rotDelta > this.data.minRot) {
+      // Двойное сглаживание ротации
+      this.smoothRot.slerp(src.quaternion, this.data.rot);
+      dst.quaternion.slerp(this.smoothRot, this.data.rot);
       this.lastRot.copy(dst.quaternion);
     } else {
-      // Игнорируем микро-повороты - оставляем ротацию как есть
+      // Игнорируем микро-повороты полностью
       dst.quaternion.copy(this.lastRot);
     }
 
@@ -153,7 +168,7 @@ function createMarker(index) {
   // Контейнер моделей с сглаживанием
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  content.setAttribute('soft-stabilizer','');
+  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true');
 
   // Модель слев
   const leftWrapper = document.createElement('a-entity');
