@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Fixed Copy</title>
+<title>WebAR — 1Fixed Copy</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -21,26 +21,15 @@
 
   <!-- Маркер с временными моделями -->
   <a-entity id="marker" mindar-image-target="targetIndex:0">
-    <a-entity id="tempLeft" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-              scale="0.05 0.05 0.05"
-              visible="false"
-              animation-mixer="clip:*; loop:repeat">
-    </a-entity>
-    <a-entity id="tempRight" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+    <a-entity id="tempFox" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
               scale="0.05 0.05 0.05"
               visible="false"
               animation-mixer="clip:*; loop:repeat">
     </a-entity>
   </a-entity>
 
-  <!-- Независимые копии вне маркера -->
-  <a-entity id="fixedLeft" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-            scale="0.05 0.05 0.05"
-            visible="false"
-            animation-mixer="clip:*; loop:repeat">
-  </a-entity>
-
-  <a-entity id="fixedRight" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+  <!-- Независимая копия вне маркера -->
+  <a-entity id="fixedFox" gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
             scale="0.05 0.05 0.05"
             visible="false"
             animation-mixer="clip:*; loop:repeat">
@@ -50,43 +39,31 @@
 
 <script>
 const marker = document.getElementById('marker');
-const tempLeft = document.getElementById('tempLeft');
-const tempRight = document.getElementById('tempRight');
-const fixedLeft = document.getElementById('fixedLeft');
-const fixedRight = document.getElementById('fixedRight');
+const tempFox = document.getElementById('tempFox');
+const fixedFox = document.getElementById('fixedFox');
 
 marker.addEventListener('targetFound', () => {
-  // показать временные модели внутри маркера
-  tempLeft.setAttribute('visible', true);
-  tempRight.setAttribute('visible', true);
+  // показать временную модель внутри маркера
+  tempFox.setAttribute('visible', true);
 
   // получить мировые координаты
-  const worldPosL = new THREE.Vector3();
-  const worldQuatL = new THREE.Quaternion();
-  tempLeft.object3D.getWorldPosition(worldPosL);
-  tempLeft.object3D.getWorldQuaternion(worldQuatL);
+  const worldPos = new THREE.Vector3();
+  const worldQuat = new THREE.Quaternion();
+  tempFox.object3D.getWorldPosition(worldPos);
+  tempFox.object3D.getWorldQuaternion(worldQuat);
 
-  const worldPosR = new THREE.Vector3();
-  const worldQuatR = new THREE.Quaternion();
-  tempRight.object3D.getWorldPosition(worldPosR);
-  tempRight.object3D.getWorldQuaternion(worldQuatR);
+  // перенести в независимую копию
+  fixedFox.object3D.position.copy(worldPos);
+  fixedFox.object3D.quaternion.copy(worldQuat);
 
-  // перенести в независимые копии
-  fixedLeft.object3D.position.copy(worldPosL);
-  fixedLeft.object3D.quaternion.copy(worldQuatL);
-  fixedRight.object3D.position.copy(worldPosR);
-  fixedRight.object3D.quaternion.copy(worldQuatR);
+  fixedFox.setAttribute('visible', true);
 
-  fixedLeft.setAttribute('visible', true);
-  fixedRight.setAttribute('visible', true);
-
-  // скрыть временные модели внутри маркера
-  tempLeft.setAttribute('visible', false);
-  tempRight.setAttribute('visible', false);
+  // скрыть временную модель внутри маркера
+  tempFox.setAttribute('visible', false);
 });
 
 marker.addEventListener('targetLost', () => {
-  // НЕ скрываем — копии остаются навсегда
+  // НЕ скрываем — копия остаётся навсегда
 });
 </script>
 
