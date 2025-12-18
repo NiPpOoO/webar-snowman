@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — маркеров по 2 модели</title>
+<title>WebAR — 6 маркеров, 2 модели</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -52,7 +52,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <!-- Музыка -->
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
 
-  <!-- 6 маркеров, на каждом по 2 модели -->
+  <!-- 6 маркеров, каждая содержит 2 модели -->
   <a-entity mindar-image-target="targetIndex:0" visible="false">
     <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
               position="-0.5 -0.5 0" scale="0.05 0.05 0.05"
@@ -126,7 +126,6 @@ startBtn.addEventListener('click', async () => {
   try {
     await mindar.start();
 
-    // Запуск музыки
     if(music.components.sound) music.components.sound.playSound();
 
     // Управление видимостью моделей и статусом
