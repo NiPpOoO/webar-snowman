@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1Stable World Anchor</title>
+<title>WebAR — 22Stable Marker Fix</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -19,18 +19,19 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  background: #000;
 }
 #start {
   position: fixed;
   inset: 0;
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  background: #000;
 }
 #start button {
-  padding: 16px 28px;
+  padding: 16px 26px;
   font-size: 16px;
   border-radius: 10px;
   border: none;
@@ -61,15 +62,19 @@ html, body {
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
   vr-mode-ui="enabled:false"
   device-orientation-permission-ui="enabled:true"
-  renderer="alpha:true; precision:mediump">
+  renderer="alpha:true; precision:lowp">
 
   <a-camera look-controls="enabled:false"></a-camera>
 
-  <!-- Скрытый маркер -->
-  <a-entity id="marker" mindar-image-target="targetIndex:0" visible="false"></a-entity>
+  <!-- МАРКЕР (НЕ СКРЫТЫЙ!) -->
+  <a-entity
+    id="marker"
+    mindar-image-target="targetIndex:0">
+  </a-entity>
 
-  <!-- МОДЕЛЬ В МИРЕ (НЕ ПРИВЯЗАНА К МАРКЕРУ) -->
-  <a-entity id="world">
+  <!-- МОДЕЛИ В МИРЕ -->
+  <a-entity id="modelContainer" visible="false">
+
     <a-entity
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
       scale="0.05 0.05 0.05"
@@ -82,101 +87,97 @@ html, body {
       scale="0.05 0.05 0.05"
       animation-mixer="clip:*; loop:repeat">
     </a-entity>
+
   </a-entity>
 
 </a-scene>
 
 <script>
-const scene = document.querySelector('a-scene');
-const marker = document.getElementById('marker');
-const world = document.getElementById('world');
+const startBtn = document.getElementById('startBtn');
+const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 
-const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const marker = document.getElementById('marker');
+const modelContainer = document.getElementById('modelContainer');
+const scene = document.querySelector('a-scene');
 
-// ===== THREE OBJECTS =====
+let markerFound = false;
+
+// THREE helpers
 const targetPos = new THREE.Vector3();
 const currentPos = new THREE.Vector3();
 const velocity = new THREE.Vector3();
+
 const targetQuat = new THREE.Quaternion();
 const currentQuat = new THREE.Quaternion();
 
-let locked = false;
+// ==== АДАПТАЦИЯ ПОД iOS ====
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+const iosVersion = (() => {
+  const m = navigator.userAgent.match(/OS (\d+)_/);
+  return m ? parseInt(m[1]) : 99;
+})();
 
-// ===== DESKTOP FALLBACK =====
-if (!isMobile) {
-  console.warn('PC MODE: MindAR disabled');
+const POSITION_SMOOTH = isIOS && iosVersion < 15 ? 0.12 : 0.18;
+const ROTATION_SMOOTH = 0.1;
+const DEAD_ZONE = 0.003;
+const MAX_SPEED = 0.04;
 
-  // Камера
-  const camera = document.querySelector('a-camera');
-  camera.setAttribute('position', '0 1.6 3');
-
-  // Показываем модели сразу
-  world.object3D.position.set(0, 0, -2);
-  world.object3D.visible = true;
-
-  status.textContent = 'PC режим (AR отключён)';
+// ==== START AR ====
+startBtn.addEventListener('click', async () => {
+  startBtn.disabled = true;
+  startScreen.style.display = 'none';
   status.style.display = 'block';
 
-  locked = true;
-}
+  try {
+    await scene.systems['mindar-image-system'].start();
+  } catch (e) {
+    alert('Ошибка доступа к камере');
+    console.error(e);
+  }
+});
 
-// ===== MOBILE (REAL AR) =====
-if (isMobile) {
-  const startBtn = document.getElementById('startBtn');
-  const startScreen = document.getElementById('start');
+// ==== MARKER EVENTS ====
+marker.addEventListener('targetFound', () => {
+  if (markerFound) return;
 
-  startBtn.addEventListener('click', async () => {
-    startBtn.disabled = true;
-    startScreen.style.display = 'none';
-    status.style.display = 'block';
+  markerFound = true;
+  status.textContent = 'Маркер найден';
 
-    try {
-      await scene.systems['mindar-image-system'].start();
-    } catch (e) {
-      alert('Ошибка камеры');
-    }
-  });
+  marker.object3D.getWorldPosition(targetPos);
+  marker.object3D.getWorldQuaternion(targetQuat);
 
-  marker.addEventListener('targetFound', () => {
-    if (locked) return;
+  currentPos.copy(targetPos);
+  currentQuat.copy(targetQuat);
 
-    marker.object3D.getWorldPosition(targetPos);
-    marker.object3D.getWorldQuaternion(targetQuat);
+  modelContainer.object3D.position.copy(currentPos);
+  modelContainer.object3D.quaternion.copy(currentQuat);
+  modelContainer.object3D.visible = true;
+});
 
-    currentPos.copy(targetPos);
-    currentQuat.copy(targetQuat);
+marker.addEventListener('targetLost', () => {
+  status.textContent = 'Наведи камеру на маркер';
+});
 
-    world.object3D.position.copy(currentPos);
-    world.object3D.quaternion.copy(currentQuat);
-
-    world.object3D.visible = true;
-    locked = true;
-
-    status.textContent = 'Маркер найден';
-  });
-}
-
-// ===== STABLE UPDATE LOOP =====
+// ==== STABLE UPDATE LOOP ====
 scene.addEventListener('frame', () => {
-  if (!locked || !isMobile) return;
+  if (!markerFound) return;
 
   marker.object3D.getWorldPosition(targetPos);
   marker.object3D.getWorldQuaternion(targetQuat);
 
   velocity.subVectors(targetPos, currentPos);
 
-  if (velocity.length() > 0.003) {
-    velocity.clampLength(0, 0.04);
-    currentPos.addScaledVector(velocity, 0.18);
-    world.object3D.position.copy(currentPos);
+  if (velocity.length() > DEAD_ZONE) {
+    velocity.clampLength(0, MAX_SPEED);
+    currentPos.addScaledVector(velocity, POSITION_SMOOTH);
+    modelContainer.object3D.position.copy(currentPos);
   }
 
-  currentQuat.slerp(targetQuat, 0.1);
-  world.object3D.quaternion.copy(currentQuat);
+  currentQuat.slerp(targetQuat, ROTATION_SMOOTH);
+  modelContainer.object3D.quaternion.copy(currentQuat);
 });
 </script>
-
 
 </body>
 </html>
