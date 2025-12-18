@@ -2,25 +2,25 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1Статичные модели + камера</title>
+<title>WebAR — 2Статичные модели с анимацией</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
 
 <style>
-html,body{
-  margin:0; width:100%; height:100%; overflow:hidden;
+html, body {
+  margin: 0; width: 100%; height: 100%; overflow: hidden;
 }
 #start{
-  position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10; background:#000;
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  z-index: 10; background: #000;
 }
 #start button{
   padding:16px 28px; font-size:16px; border-radius:12px; border:none;
 }
 </style>
 </head>
-
 <body>
 
 <div id="start">
@@ -35,23 +35,23 @@ html,body{
   <!-- Камера AR.js -->
   <a-entity camera look-controls="enabled:false">
 
-    <!-- HUD контейнер: статичные модели -->
-    <a-entity id="hud" position="0 0 -2">
+    <!-- HUD: статичные модели -->
+    <a-entity id="hud" position="0 0 -2" visible="false">
 
       <!-- Левая модель -->
-      <a-entity
+      <a-entity id="leftModel"
         gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
         position="-0.6 -0.4 0"
         scale="0.05 0.05 0.05"
-        animation-mixer>
+        animation-mixer="clip:*; loop:repeat; timeScale:1">
       </a-entity>
 
       <!-- Правая модель -->
-      <a-entity
+      <a-entity id="rightModel"
         gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
         position="0.6 -0.4 0"
         scale="0.05 0.05 0.05"
-        animation-mixer>
+        animation-mixer="clip:*; loop:repeat; timeScale:1">
       </a-entity>
 
     </a-entity>
@@ -67,12 +67,24 @@ const hud = document.getElementById('hud');
 
 startBtn.onclick = () => {
   startBtn.disabled = true;
-  startScreen.style.display='none';
+  startScreen.style.display = 'none';
 
-  // Задержка появления моделей 5 секунд
-  setTimeout(()=>{
-    hud.setAttribute('visible','true');
-  },5000);
+  // Показ HUD через 5 секунд
+  setTimeout(() => {
+    hud.setAttribute('visible', 'true');
+
+    // Запуск анимации всех моделей внутри HUD
+    const models = hud.querySelectorAll('[animation-mixer]');
+    models.forEach(model => {
+      if(model.components['animation-mixer']){
+        model.components['animation-mixer'].stop(); // на всякий случай
+        model.components['animation-mixer'].play(); // запускаем
+      }
+    });
+
+    // Плавное появление через opacity
+    hud.setAttribute('animation', 'property: components.material.material.opacity; from:0; to:1; dur:1000; easing:linear');
+  }, 5000);
 };
 </script>
 
