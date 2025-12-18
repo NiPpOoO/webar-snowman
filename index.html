@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 3</title>
+<title>WebAR — 4</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -65,23 +65,29 @@ const markersCount = 6;
 // Компонент для сглаживания дрожания модели с медианным фильтром
 AFRAME.registerComponent('soft-stabilizer', {
   schema: {
-    smoothing: { default: 0.05 },  // Коэффициент сглаживания (чем меньше, тем плавнее)
-    lockY: { default: true },       // Фиксировать вертикальную ось
-    lockRot: { default: true }     // Блокировать повороты полностью
+    smoothing: { default: 0.03 },      // Очень сильное сглаживание
+    updateInterval: { default: 300 },  // Большой интервал обновления (300мс)
+    lockY: { default: true },          // Фиксировать вертикальную ось
+    lockRot: { default: true }        // Блокировать повороты полностью
   },
   init() {
     this.isVisible = false;
     this.initialY = null;
-    this.initialRot = null;
     
-    // Буферы для сглаживания (скользящее среднее)
+    // Буферы для сглаживания
     this.smoothPos = new THREE.Vector3();
-    this.smoothRot = new THREE.Quaternion();
+    
+    // История позиций для медианного фильтра (убирает выбросы)
+    this.positionHistory = [];
+    this.historySize = 5;
     
     // Флаг инициализации
     this.initialized = false;
+    
+    // Время последнего обновления позиции
+    this.lastUpdateTime = 0;
   },
-  tick() {
+  tick(time) {
     const parent = this.el.parentEl;
     if (!parent) return;
 
@@ -96,40 +102,64 @@ AFRAME.registerComponent('soft-stabilizer', {
       this.isVisible = false;
       this.initialized = false;
       this.initialY = null;
-      this.initialRot = null;
+      this.positionHistory = [];
+      this.lastUpdateTime = 0;
       return;
     }
 
     // Инициализация при первом появлении маркера
     if (!this.initialized) {
       this.initialY = src.position.y;
-      this.initialRot = src.quaternion.clone();
       this.smoothPos.copy(src.position);
-      this.smoothRot.copy(src.quaternion);
       dst.position.copy(src.position);
-      dst.quaternion.copy(src.quaternion);
+      // Инициализируем историю одинаковыми значениями
+      for (let i = 0; i < this.historySize; i++) {
+        this.positionHistory.push(src.position.clone());
+      }
       this.initialized = true;
+      this.lastUpdateTime = time;
+      
+      if (!this.isVisible) {
+        this.el.setAttribute('visible', true);
+        this.isVisible = true;
+      }
+      return;
     }
 
-    // Создаем целевую позицию с фиксацией Y
-    const targetPos = new THREE.Vector3(
-      src.position.x,
-      this.data.lockY ? this.initialY : src.position.y,
-      src.position.z
-    );
+    // Обновляем позицию только если прошло достаточно времени
+    const timeSinceLastUpdate = time - this.lastUpdateTime;
+    if (timeSinceLastUpdate >= this.data.updateInterval) {
+      // Создаем целевую позицию с фиксацией Y
+      const targetPos = new THREE.Vector3(
+        src.position.x,
+        this.data.lockY ? this.initialY : src.position.y,
+        src.position.z
+      );
 
-    // Применяем сглаживание позиции через скользящее среднее
-    this.smoothPos.lerp(targetPos, this.data.smoothing);
-    dst.position.lerp(this.smoothPos, this.data.smoothing);
+      // Добавляем в историю и удаляем старые значения
+      this.positionHistory.push(targetPos.clone());
+      if (this.positionHistory.length > this.historySize) {
+        this.positionHistory.shift();
+      }
 
-    // Обработка ротации
-    if (this.data.lockRot) {
-      // Полностью блокируем повороты
-      dst.quaternion.copy(this.initialRot);
-    } else {
-      // Сглаживание ротации
-      this.smoothRot.slerp(src.quaternion, this.data.smoothing);
-      dst.quaternion.slerp(this.smoothRot, this.data.smoothing);
+      // Вычисляем медианное значение по каждой оси (убирает выбросы)
+      const sortedX = this.positionHistory.map(p => p.x).sort((a, b) => a - b);
+      const sortedY = this.positionHistory.map(p => p.y).sort((a, b) => a - b);
+      const sortedZ = this.positionHistory.map(p => p.z).sort((a, b) => a - b);
+      const medianIndex = Math.floor(sortedX.length / 2);
+      
+      const medianPos = new THREE.Vector3(
+        sortedX[medianIndex],
+        sortedY[medianIndex],
+        sortedZ[medianIndex]
+      );
+
+      // Применяем сглаживание к медианной позиции
+      this.smoothPos.lerp(medianPos, this.data.smoothing);
+      dst.position.lerp(this.smoothPos, this.data.smoothing);
+
+      // Обновляем время последнего обновления
+      this.lastUpdateTime = time;
     }
 
     // Показываем контент
@@ -137,6 +167,54 @@ AFRAME.registerComponent('soft-stabilizer', {
       this.el.setAttribute('visible', true);
       this.isVisible = true;
     }
+  }
+});
+
+// Компонент для поворота модели к камере (только по оси Y)
+AFRAME.registerComponent('look-at-camera', {
+  schema: {
+    enabled: { default: true },
+    smoothing: { default: 0.1 }
+  },
+  init() {
+    this.camera = null;
+    this.targetRotation = new THREE.Euler();
+  },
+  tick() {
+    if (!this.data.enabled) return;
+    
+    // Находим камеру
+    if (!this.camera) {
+      this.camera = document.querySelector('a-camera');
+      if (!this.camera) return;
+    }
+
+    const cameraPos = this.camera.object3D.getWorldPosition(new THREE.Vector3());
+    const modelPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+    
+    // Вычисляем направление к камере в горизонтальной плоскости
+    const direction = new THREE.Vector3();
+    direction.x = cameraPos.x - modelPos.x;
+    direction.z = cameraPos.z - modelPos.z;
+    direction.normalize();
+    
+    // Вычисляем угол поворота только по оси Y
+    const angleY = Math.atan2(direction.x, direction.z);
+    
+    // Получаем текущую ротацию
+    const currentRotation = this.el.object3D.rotation.y;
+    
+    // Вычисляем разницу углов и нормализуем в диапазон [-PI, PI]
+    let targetY = angleY;
+    let diff = targetY - currentRotation;
+    
+    // Нормализуем разницу
+    while (diff > Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+    
+    // Применяем сглаживание
+    const newY = currentRotation + diff * this.data.smoothing;
+    this.el.object3D.rotation.y = newY;
   }
 });
 
@@ -149,7 +227,7 @@ function createMarker(index) {
   // Контейнер моделей с сглаживанием
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; smoothing: 0.05');
+  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; smoothing: 0.03; updateInterval: 300');
 
   // Модель слева
   const leftWrapper = document.createElement('a-entity');
@@ -160,6 +238,7 @@ function createMarker(index) {
   leftModel.setAttribute('scale','0.05 0.05 0.05');
   leftModel.setAttribute('visible','true');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  leftModel.setAttribute('look-at-camera','smoothing: 0.1');
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
 
@@ -172,6 +251,7 @@ function createMarker(index) {
   rightModel.setAttribute('scale','0.05 0.05 0.05');
   rightModel.setAttribute('visible','true');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  rightModel.setAttribute('look-at-camera','smoothing: 0.1');
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
 
