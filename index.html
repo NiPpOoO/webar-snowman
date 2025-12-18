@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1Stable Forward Only</title>
+<title>WebAR — 1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -27,8 +27,10 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #status {
   position:fixed; bottom:12px; left:50%;
   transform:translateX(-50%);
-  background:rgba(0,0,0,.6); color:#fff; padding:8px 12px;
-  border-radius:6px; z-index:11; display:none;
+  background:rgba(0,0,0,.6);
+  color:#fff; padding:8px 12px;
+  border-radius:6px; z-index:11;
+  display:none;
 }
 </style>
 </head>
@@ -39,10 +41,11 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 </div>
 <div id="status">Наведите камеру на снеговика</div>
 
-<a-scene mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
-        vr-mode-ui="enabled:false"
-        device-orientation-permission-ui="enabled:false"
-        renderer="alpha:true">
+<a-scene
+  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
+  vr-mode-ui="enabled:false"
+  device-orientation-permission-ui="enabled:false"
+  renderer="alpha:true">
 
   <a-camera look-controls="enabled:false"></a-camera>
 
@@ -59,18 +62,36 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
+AFRAME.registerComponent('soft-stabilizer', {
+  schema: {
+    pos: { default: 0.25 },
+    rot: { default: 0.25 }
+  },
+  tick() {
+    const parent = this.el.parentEl;
+    if (!parent) return;
+
+    const src = parent.object3D;
+    const dst = this.el.object3D;
+
+    dst.position.lerp(src.position, this.data.pos);
+    dst.quaternion.slerp(src.quaternion, this.data.rot);
+  }
+});
+
 // Функция создания маркера с моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контент создаём отдельно, вне маркера
-  const content = document.createElement('a-entity');
-  content.setAttribute('visible', false);
-  scene.appendChild(content);
+  // Контейнер моделей
+const content = document.createElement('a-entity');
+content.setAttribute('position','0 0 0');
+content.setAttribute('soft-stabilizer','');
 
-  // Левая модель
+
+  // Модель слев
   const leftWrapper = document.createElement('a-entity');
   leftWrapper.setAttribute('position','-0.5 -0.5 0');
   const leftModel = document.createElement('a-entity');
@@ -80,7 +101,7 @@ function createMarker(index) {
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
 
-  // Правая модель
+  // Модель справа
   const rightWrapper = document.createElement('a-entity');
   rightWrapper.setAttribute('position','0.5 -0.5 0');
   const rightModel = document.createElement('a-entity');
@@ -90,30 +111,25 @@ function createMarker(index) {
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
 
-  // При обнаружении маркера копируем позицию/ориентацию один раз
-  marker.addEventListener('targetFound', () => {
-    const pos = marker.object3D.position.clone();
-    const rot = marker.object3D.quaternion.clone();
+  marker.appendChild(content);
 
-    content.object3D.position.copy(pos);
-    content.object3D.quaternion.copy(rot);
-
+  marker.addEventListener('targetFound', ()=>{
     content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
   });
 
-  marker.addEventListener('targetLost', () => {
+  marker.addEventListener('targetLost', ()=>{
     setTimeout(()=>{
       content.setAttribute('visible', false);
       status.textContent = 'Наведи камеру на маркер';
-    }, 200);
+    },200);
   });
 
   return marker;
 }
 
-// Создаем все маркеры
-for(let i=0; i<markersCount; i++){
+// Создаем маркеры
+for(let i=0;i<markersCount;i++){
   createMarker(i);
 }
 
@@ -124,6 +140,7 @@ startBtn.addEventListener('click', async ()=>{
   status.style.display='block';
 
   try {
+    // Ждём, пока сцена полностью загрузится
     if (!scene.hasLoaded) {
       await new Promise(resolve =>
         scene.addEventListener('loaded', resolve, { once:true })
@@ -133,15 +150,16 @@ startBtn.addEventListener('click', async ()=>{
     const mindar = scene.systems['mindar-image-system'];
     await mindar.start();
 
-    const music = document.getElementById('music');
-    music.components.sound.playSound();
+    document.getElementById('music')
+      .components.sound.playSound();
+
   } catch(e){
     alert('Камера недоступна или отказано в доступе.');
     console.error(e);
   }
 });
-</script>
 
+</script>
 
 </body>
 </html>
