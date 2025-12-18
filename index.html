@@ -2,14 +2,11 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1модели + координаты маркера</title>
+<title>WebAR — 1модели всегда на экране + координаты маркера</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
-
-<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
@@ -18,12 +15,10 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #start {
   position:fixed; inset:0; background:#000;
   display:flex; align-items:center; justify-content:center;
-  z-index:100;
-  pointer-events:auto;
+  z-index:100; pointer-events:auto;
 }
 #start button {
-  padding:16px 26px; font-size:16px;
-  border-radius:10px; border:none;
+  padding:16px 26px; font-size:16px; border-radius:10px; border:none;
 }
 #status {
   position:fixed; bottom:12px; left:50%;
@@ -36,9 +31,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 </head>
 <body>
 
-<div id="start">
-  <button id="startBtn">Запустить AR</button>
-</div>
+<div id="start"><button id="startBtn">Запустить AR</button></div>
 <div id="status">Наведи камеру на маркер</div>
 
 <a-scene
@@ -50,28 +43,19 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <a-camera look-controls="enabled:true"></a-camera>
 
   <!-- Музыка -->
-  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
+  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
 
-  <!-- Контейнер моделей — всегда на экране -->
+  <!-- Модели всегда на экране -->
   <a-entity id="modelsContainer" position="0 0 -2" visible="true">
-
-    <a-entity
-      gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-      position="-0.5 -0.5 0"
-      scale="0.05 0.05 0.05"
-      animation-mixer="clip:*; loop:repeat">
-    </a-entity>
-
-    <a-entity
-      gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-      position="0.5 -0.5 0"
-      scale="0.05 0.05 0.05"
-      animation-mixer="clip:*; loop:repeat">
-    </a-entity>
-
+    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb" 
+              position="-0.5 -0.5 0" scale="0.05 0.05 0.05" 
+              animation-mixer="clip:*; loop:repeat"></a-entity>
+    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb" 
+              position="0.5 -0.5 0" scale="0.05 0.05 0.05" 
+              animation-mixer="clip:*; loop:repeat"></a-entity>
   </a-entity>
 
-  <!-- Скрытый маркер для координат -->
+  <!-- Скрытый маркер для отслеживания координат -->
   <a-entity id="markerTracker" mindar-image-target="targetIndex:0" visible="false"></a-entity>
 
 </a-scene>
@@ -83,7 +67,7 @@ const status = document.getElementById('status');
 const markerTracker = document.getElementById('markerTracker');
 const modelsContainer = document.getElementById('modelsContainer');
 
-let markerPosition = new THREE.Vector3(); // координаты маркера
+let markerPosition = new THREE.Vector3();
 
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
@@ -95,34 +79,23 @@ startBtn.addEventListener('click', async () => {
   try {
     await mindar.start();
 
-    // Включаем музыку
     const music = document.getElementById('music');
     if(music.components.sound) music.components.sound.playSound();
 
-    // Обновляем координаты маркера на каждой рамке
+    // Получаем координаты маркера без движения моделей
     scene.addEventListener('frame', () => {
       if(markerTracker.object3D){
         markerTracker.object3D.getWorldPosition(markerPosition);
-
-        // Пример использования координат: слегка смещаем модели
-        modelsContainer.object3D.position.set(
-          0 + markerPosition.x * 0.1,
-          0 + markerPosition.y * 0.1,
-          -2 + markerPosition.z * 0.1
-        );
+        // Теперь markerPosition.x/y/z можно использовать для логики
       }
     });
 
-    // События для статуса
-    markerTracker.addEventListener('targetFound', () => {
-      status.textContent = 'Маркер найден';
-    });
-    markerTracker.addEventListener('targetLost', () => {
-      status.textContent = 'Наведи камеру на маркер';
-    });
+    // Статус маркера
+    markerTracker.addEventListener('targetFound', ()=>{status.textContent='Маркер найден';});
+    markerTracker.addEventListener('targetLost', ()=>{status.textContent='Наведи камеру на маркер';});
 
   } catch(e){
-    alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
+    alert('Камера недоступна или отказано в доступе.');
     console.error(e);
   }
 });
