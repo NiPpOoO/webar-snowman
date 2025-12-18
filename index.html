@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Stable Update</title>
+<title>WebAR — Stable Fixed Models</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -67,9 +67,10 @@ function createMarker(index) {
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контент внутри маркера (так гарантированно появится)
+  // Контент создаём отдельно, вне маркера
   const content = document.createElement('a-entity');
   content.setAttribute('visible', false);
+  scene.appendChild(content);
 
   // Левая модель
   const leftModel = document.createElement('a-entity');
@@ -87,15 +88,17 @@ function createMarker(index) {
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
   content.appendChild(rightModel);
 
-  marker.appendChild(content);
-
   let updateTimer = null;
 
   marker.addEventListener('targetFound', () => {
+    // копируем позицию и ориентацию один раз
+    content.object3D.position.copy(marker.object3D.position);
+    content.object3D.quaternion.copy(marker.object3D.quaternion);
+
     content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
 
-    // обновляем позицию каждые 10 секунд
+    // редкое обновление (раз в 10 секунд)
     updateTimer = setInterval(() => {
       content.object3D.position.copy(marker.object3D.position);
       content.object3D.quaternion.copy(marker.object3D.quaternion);
