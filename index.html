@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 45</title>
+<title>WebAR — 1222</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -68,8 +68,8 @@ AFRAME.registerComponent('soft-stabilizer', {
     lockY: { default: true },           // Фиксировать вертикальную ось
     lockRot: { default: true },         // Блокировать повороты полностью
     smoothing: { default: 0.1 },       // Сглаживание при обновлении
-    minMoveDistance: { default: 0.5 },  // Порог для обновления (в единицах) - увеличен для больших движений
-    updateInterval: { default: 5000 }   // Интервал обновления в мс (5000 = 5 секунд)
+    minMoveDistance: { default: 2.0 },  // Порог для обновления (в единицах) - ОЧЕНЬ большой для полной стабильности
+    updateInterval: { default: 10000 }   // Интервал обновления в мс (10000 = 10 секунд) - реже обновляем
   },
   init() {
     console.log('soft-stabilizer: инициализация компонента');
@@ -195,16 +195,13 @@ AFRAME.registerComponent('soft-stabilizer', {
     // ВАЖНО: content должен быть в позиции 0,0,0 относительно маркера для стабильности
     // КРИТИЧНО: применяем КАЖДЫЙ КАДР, чтобы заблокировать любые изменения от MindAR
     if (this.stablePosition) {
-      // Для стабильности просто фиксируем позицию на 0,0,0 относительно маркера
-      // Это означает, что модели всегда в центре маркера, без дрожания
+      // ПОЛНОСТЬЮ фиксируем позицию на 0,0,0 относительно маркера
+      // Это означает, что модели всегда в центре маркера, БЕЗ ДРОЖАНИЯ
       // Применяем КАЖДЫЙ КАДР для максимальной стабильности
+      // Используем прямое присваивание для гарантированного применения
       dst.position.set(0, 0, 0);
-      
-      // ДОПОЛНИТЕЛЬНО: блокируем любые изменения позиции через object3D напрямую
-      // Это перезаписывает любые обновления от MindAR
-      if (dst.position.x !== 0 || dst.position.y !== 0 || dst.position.z !== 0) {
-        dst.position.set(0, 0, 0);
-      }
+      // Принудительно обновляем матрицу для гарантии применения позиции
+      dst.updateMatrix();
     }
     
     // Обновляем только с заданным интервалом (например, каждые 5 секунд)
@@ -361,9 +358,10 @@ function createMarker(index) {
   // Контейнер моделей с сглаживанием
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  // Стабилизация с обновлением каждые 5 секунд и большим порогом отклонения
+  // МАКСИМАЛЬНАЯ стабилизация: обновление каждые 10 секунд и ОЧЕНЬ большой порог (2.0 единиц)
+  // Это означает, что позиция обновится только при ОЧЕНЬ больших движениях маркера
   console.log(`Маркер ${index}: применяю soft-stabilizer к content`);
-  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; minMoveDistance: 0.5; smoothing: 0.1; updateInterval: 5000');
+  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; minMoveDistance: 2.0; smoothing: 0.1; updateInterval: 10000');
   
   // Проверяем, что компонент применился
   setTimeout(() => {
