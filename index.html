@@ -2,11 +2,11 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Статичные модели</title>
+<title>WebAR — 1Статичные модели + камера</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
 
 <style>
 html,body{
@@ -27,9 +27,12 @@ html,body{
   <button id="startBtn">Запустить AR</button>
 </div>
 
-<a-scene embedded vr-mode-ui="enabled:false" renderer="alpha:true">
+<a-scene embedded
+         vr-mode-ui="enabled:false"
+         renderer="alpha:true"
+         arjs="sourceType: webcam; debugUIEnabled: false;">
 
-  <!-- Камера с реальным видео на фоне -->
+  <!-- Камера AR.js -->
   <a-entity camera look-controls="enabled:false">
 
     <!-- HUD контейнер: статичные модели -->
@@ -60,25 +63,16 @@ html,body{
 <script>
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
+const hud = document.getElementById('hud');
 
-startBtn.onclick = async () => {
+startBtn.onclick = () => {
   startBtn.disabled = true;
   startScreen.style.display='none';
 
-  try {
-    // Запрос камеры через WebRTC
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    const video = document.createElement('video');
-    video.srcObject = stream;
-    video.play();
-
-    // Можно добавить видео на фон через <a-video>, если нужно
-    // Но A-Frame сам покажет камеру на фоне сцены
-
-  } catch(e) {
-    alert('Не удалось включить камеру');
-    console.error(e);
-  }
+  // Задержка появления моделей 5 секунд
+  setTimeout(()=>{
+    hud.setAttribute('visible','true');
+  },5000);
 };
 </script>
 
