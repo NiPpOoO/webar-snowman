@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Статичные модели с анимацией и обновлением позиции</title>
+<title>WebAR — 5Статичные модели с анимацией</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -17,12 +17,10 @@
 html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #start {
   position:fixed; inset:0; background:#000;
-  display:flex; align-items:center; justify-content:center;
-  z-index:10;
+  display:flex; align-items:center; justify-content:center; z-index:10;
 }
 #start button {
-  padding:16px 26px; font-size:16px;
-  border-radius:10px; border:none;
+  padding:16px 26px; font-size:16px; border-radius:10px; border:none;
 }
 #status {
   position:fixed; bottom:12px; left:50%;
@@ -44,27 +42,31 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 <a-scene
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
   vr-mode-ui="enabled:false"
-  device-orientation-permission-ui="enabled:false"
+  device-orientation-permission-ui="enabled:true"
   renderer="alpha:true">
 
   <a-camera look-controls="enabled:false"></a-camera>
 
   <!-- Музыка -->
-  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
+  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume:0.5"></a-entity>
 
-  <!-- Контейнер для моделей -->
-  <a-entity id="modelsContainer" visible="false">
+  <!-- Контейнер для статичных моделей -->
+  <a-entity id="modelsContainer" visible="false" position="0 0 -2">
+
     <a-entity id="leftModel"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+      position="-0.5 -0.5 0"
       scale="0.05 0.05 0.05"
       animation-mixer>
     </a-entity>
 
     <a-entity id="rightModel"
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+      position="0.5 -0.5 0"
       scale="0.05 0.05 0.05"
       animation-mixer>
     </a-entity>
+
   </a-entity>
 
 </a-scene>
@@ -80,45 +82,61 @@ const leftModel = document.getElementById('leftModel');
 const rightModel = document.getElementById('rightModel');
 const music = document.getElementById('music');
 
-let markerPositions = [{x:0, y:0, z:0}]; // массив позиций для маркеров, можно расширить
+let mindar = null;
+let targetEntity = null;
 
-// Функция имитации обновления позиции маркера каждые 5 секунд
+// Создаем временный маркер, чтобы получить позицию
+function createTargetTracker() {
+  targetEntity = document.createElement('a-entity');
+  targetEntity.setAttribute('mindar-image-target', 'targetIndex:0'); // первый маркер
+  targetEntity.setAttribute('visible', false); // скрываем сам маркер
+  scene.appendChild(targetEntity);
+}
+createTargetTracker();
+
+// Функция обновления позиции моделей каждые 5 секунд
 function updateModelPositions() {
-  // Например, берем первую позицию маркера
-  const pos = markerPositions[0];
-  leftModel.setAttribute('position', `${pos.x - 0.5} ${pos.y - 0.5} ${pos.z}`);
-  rightModel.setAttribute('position', `${pos.x + 0.5} ${pos.y - 0.5} ${pos.z}`);
+  if(!targetEntity) return;
+  const worldPos = new THREE.Vector3();
+  targetEntity.object3D.getWorldPosition(worldPos);
+
+  // Обновляем позицию контейнера моделей
+  modelsContainer.object3D.position.copy(worldPos);
 }
 
+// Старт AR
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
   startScreen.style.display = 'none';
   status.style.display = 'block';
 
   try {
-    // Запрос доступа к камере (важно для Android)
-    await navigator.mediaDevices.getUserMedia({ video: true });
-
-    const mindar = scene.systems['mindar-image-system'];
+    mindar = scene.systems['mindar-image-system'];
     await mindar.start();
 
-    // Включаем музыку
-    music.components.sound.playSound();
+    // Показываем модели
+    modelsContainer.setAttribute('visible', true);
 
-    // После загрузки моделей показываем контейнер и запускаем анимацию
+    // Запускаем анимацию моделей после загрузки
     [leftModel, rightModel].forEach(model => {
       model.addEventListener('model-loaded', () => {
-        modelsContainer.setAttribute('visible', true);
-        if (model.components['animation-mixer']) {
+        if(model.components['animation-mixer']){
           model.components['animation-mixer'].play();
         }
       });
     });
 
-    // Обновление позиции моделей каждые 5 секунд
+    // Каждые 5 секунд обновляем позицию моделей
     setInterval(updateModelPositions, 5000);
 
-  } catch (e) {
+    // Включаем музыку
+    music.components.sound.playSound();
+
+    // Слушаем событие обнаружения маркера для статуса
+    targetEntity.addEventListener('targetFound', () => status.textContent = 'Маркер найден');
+    targetEntity.addEventListener('targetLost', () => status.textContent = 'Наведи камеру на маркер');
+
+  } catch(e) {
     alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
     console.error(e);
   }
