@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1</title>
+<title>WebAR — 3</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -62,26 +62,24 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
-// Компонент для сглаживания дрожания модели с экстремальной фильтрацией шума
+// Компонент для сглаживания дрожания модели с медианным фильтром
 AFRAME.registerComponent('soft-stabilizer', {
   schema: {
-    pos: { default: 0.02 },  // Экстремально сильное сглаживание позиции
-    rot: { default: 0.02 },  // Экстремально сильное сглаживание ротации
-    minMove: { default: 0.03 },  // Очень большой порог для обновления позиции
-    minRot: { default: 0.05 },   // Очень большой порог для обновления ротации (почти блокирует повороты)
-    lockY: { default: true },     // Фиксировать вертикальную ось
-    lockRot: { default: true }    // Блокировать повороты полностью
+    smoothing: { default: 0.05 },  // Коэффициент сглаживания (чем меньше, тем плавнее)
+    lockY: { default: true },       // Фиксировать вертикальную ось
+    lockRot: { default: true }     // Блокировать повороты полностью
   },
   init() {
-    // Сохраняем предыдущие значения для проверки изменений
-    this.lastPos = new THREE.Vector3();
-    this.lastRot = new THREE.Quaternion();
     this.isVisible = false;
     this.initialY = null;
     this.initialRot = null;
-    // Буферы для экспоненциального сглаживания
+    
+    // Буферы для сглаживания (скользящее среднее)
     this.smoothPos = new THREE.Vector3();
     this.smoothRot = new THREE.Quaternion();
+    
+    // Флаг инициализации
+    this.initialized = false;
   },
   tick() {
     const parent = this.el.parentEl;
@@ -90,68 +88,51 @@ AFRAME.registerComponent('soft-stabilizer', {
     const src = parent.object3D;
     const dst = this.el.object3D;
 
-    // Проверяем, видим ли маркер
+    // Проверяем видимость маркера
     const markerVisible = parent.getAttribute('visible') !== false;
     
     if (!markerVisible) {
       this.el.setAttribute('visible', false);
       this.isVisible = false;
+      this.initialized = false;
       this.initialY = null;
       this.initialRot = null;
       return;
     }
 
-    // Сохраняем начальные значения при первом появлении
-    if (this.initialY === null) {
+    // Инициализация при первом появлении маркера
+    if (!this.initialized) {
       this.initialY = src.position.y;
-      this.lastPos.copy(src.position);
-      this.smoothPos.copy(src.position);
-    }
-    
-    if (this.initialRot === null) {
       this.initialRot = src.quaternion.clone();
-      this.lastRot.copy(src.quaternion);
+      this.smoothPos.copy(src.position);
       this.smoothRot.copy(src.quaternion);
+      dst.position.copy(src.position);
+      dst.quaternion.copy(src.quaternion);
+      this.initialized = true;
     }
 
-    // Вычисляем изменения
-    const posDelta = src.position.distanceTo(this.lastPos);
-    const rotDelta = src.quaternion.angleTo(this.lastRot);
+    // Создаем целевую позицию с фиксацией Y
+    const targetPos = new THREE.Vector3(
+      src.position.x,
+      this.data.lockY ? this.initialY : src.position.y,
+      src.position.z
+    );
 
-    // Экстремально агрессивное сглаживание позиции с двойной фильтрацией
-    if (posDelta > this.data.minMove) {
-      // Первый уровень сглаживания - в буфер
-      const targetPos = new THREE.Vector3(
-        src.position.x,
-        this.data.lockY ? this.initialY : src.position.y,
-        src.position.z
-      );
-      
-      this.smoothPos.lerp(targetPos, this.data.pos);
-      
-      // Второй уровень сглаживания - из буфера в финальную позицию
-      dst.position.lerp(this.smoothPos, this.data.pos);
-      this.lastPos.copy(dst.position);
-    } else {
-      // Игнорируем микро-изменения полностью
-      dst.position.copy(this.lastPos);
-    }
+    // Применяем сглаживание позиции через скользящее среднее
+    this.smoothPos.lerp(targetPos, this.data.smoothing);
+    dst.position.lerp(this.smoothPos, this.data.smoothing);
 
-    // Экстремально агрессивное сглаживание ротации
+    // Обработка ротации
     if (this.data.lockRot) {
-      // Полностью блокируем повороты - используем начальную ротацию
+      // Полностью блокируем повороты
       dst.quaternion.copy(this.initialRot);
-    } else if (rotDelta > this.data.minRot) {
-      // Двойное сглаживание ротации
-      this.smoothRot.slerp(src.quaternion, this.data.rot);
-      dst.quaternion.slerp(this.smoothRot, this.data.rot);
-      this.lastRot.copy(dst.quaternion);
     } else {
-      // Игнорируем микро-повороты полностью
-      dst.quaternion.copy(this.lastRot);
+      // Сглаживание ротации
+      this.smoothRot.slerp(src.quaternion, this.data.smoothing);
+      dst.quaternion.slerp(this.smoothRot, this.data.smoothing);
     }
 
-    // Показываем контент только если маркер виден
+    // Показываем контент
     if (!this.isVisible) {
       this.el.setAttribute('visible', true);
       this.isVisible = true;
@@ -168,14 +149,16 @@ function createMarker(index) {
   // Контейнер моделей с сглаживанием
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true');
+  content.setAttribute('soft-stabilizer','lockRot: true; lockY: true; smoothing: 0.05');
 
-  // Модель слев
+  // Модель слева
   const leftWrapper = document.createElement('a-entity');
   leftWrapper.setAttribute('position','-0.5 -0.5 0');
+  leftWrapper.setAttribute('visible','true');
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
+  leftModel.setAttribute('visible','true');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
@@ -183,19 +166,29 @@ function createMarker(index) {
   // Модель справа
   const rightWrapper = document.createElement('a-entity');
   rightWrapper.setAttribute('position','0.5 -0.5 0');
+  rightWrapper.setAttribute('visible','true');
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
+  rightModel.setAttribute('visible','true');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
 
   marker.appendChild(content);
+  
+  // Отладка: проверяем количество дочерних элементов
+  console.log(`Маркер ${index}: создано моделей в content:`, content.children.length);
 
   marker.addEventListener('targetFound', ()=>{
     marker.setAttribute('visible', true);
     content.setAttribute('visible', true);
-    status.textContent = 'Маркер найден';
+    // Убеждаемся, что обе модели видны
+    leftWrapper.setAttribute('visible', true);
+    rightWrapper.setAttribute('visible', true);
+    leftModel.setAttribute('visible', true);
+    rightModel.setAttribute('visible', true);
+    status.textContent = `Маркер ${index} найден`;
   });
 
   marker.addEventListener('targetLost', ()=>{
