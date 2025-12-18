@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Fixed Models Outside Marker</title>
+<title>WebAR — Fixed Models</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -62,43 +62,45 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
+// Функция создания маркера с моделями
 function createMarker(index) {
   const marker = document.createElement('a-entity');
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контент создаём отдельно, вне маркера
+  // Контейнер моделей
   const content = document.createElement('a-entity');
-  content.setAttribute('visible', false);
-  scene.appendChild(content);
+  content.setAttribute('position','0 0 0');
 
-  // Левая модель
+  // Модель слева
+  const leftWrapper = document.createElement('a-entity');
+  leftWrapper.setAttribute('position','-0.5 -0.5 0');
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
-  leftModel.setAttribute('position','-0.5 -0.5 0');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  content.appendChild(leftModel);
+  leftWrapper.appendChild(leftModel);
+  content.appendChild(leftWrapper);
 
-  // Правая модель
+  // Модель справа
+  const rightWrapper = document.createElement('a-entity');
+  rightWrapper.setAttribute('position','0.5 -0.5 0');
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
-  rightModel.setAttribute('position','0.5 -0.5 0');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  content.appendChild(rightModel);
+  rightWrapper.appendChild(rightModel);
+  content.appendChild(rightWrapper);
 
-  marker.addEventListener('targetFound', () => {
-    // копируем позицию и ориентацию один раз
-    content.object3D.position.copy(marker.object3D.position);
-    content.object3D.quaternion.copy(marker.object3D.quaternion);
+  marker.appendChild(content);
 
+  marker.addEventListener('targetFound', ()=>{
     content.setAttribute('visible', true);
     status.textContent = 'Маркер найден';
   });
 
-  marker.addEventListener('targetLost', () => {
-    // НЕ скрываем контент, он остаётся навсегда
+  marker.addEventListener('targetLost', ()=>{
+    // НЕ скрываем контент — он остаётся навсегда
     status.textContent = 'Маркер потерян, но модели остаются';
   });
 
