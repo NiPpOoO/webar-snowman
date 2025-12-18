@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1</title>
+<title>WebAR — 2</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -62,19 +62,21 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 6;
 
-// Компонент для сглаживания дрожания модели с фильтрацией шума
+// Компонент для сглаживания дрожания модели с агрессивной фильтрацией шума
 AFRAME.registerComponent('soft-stabilizer', {
   schema: {
-    pos: { default: 0.15 },  // Более сильное сглаживание позиции
-    rot: { default: 0.15 },  // Более сильное сглаживание ротации
-    minMove: { default: 0.001 },  // Минимальное изменение для обновления позиции
-    minRot: { default: 0.001 }    // Минимальное изменение для обновления ротации
+    pos: { default: 0.05 },  // Очень сильное сглаживание позиции
+    rot: { default: 0.05 },  // Очень сильное сглаживание ротации
+    minMove: { default: 0.01 },  // Большой порог для обновления позиции (фильтрация микро-дрожания)
+    minRot: { default: 0.02 },   // Большой порог для обновления ротации (предотвращает повороты)
+    lockY: { default: true }      // Фиксировать вертикальную ось
   },
   init() {
     // Сохраняем предыдущие значения для проверки изменений
     this.lastPos = new THREE.Vector3();
     this.lastRot = new THREE.Quaternion();
     this.isVisible = false;
+    this.initialY = null;
   },
   tick() {
     const parent = this.el.parentEl;
@@ -83,34 +85,54 @@ AFRAME.registerComponent('soft-stabilizer', {
     const src = parent.object3D;
     const dst = this.el.object3D;
 
-    // Проверяем, видим ли маркер (через событие или проверку позиции)
+    // Проверяем, видим ли маркер
     const markerVisible = parent.getAttribute('visible') !== false;
     
     if (!markerVisible) {
-      // Если маркер не виден, скрываем контент
       this.el.setAttribute('visible', false);
       this.isVisible = false;
+      this.initialY = null;
       return;
     }
 
-    // Вычисляем расстояние и угол изменения
+    // Сохраняем начальную Y позицию при первом появлении
+    if (this.initialY === null) {
+      this.initialY = src.position.y;
+      this.lastPos.copy(src.position);
+      this.lastRot.copy(src.quaternion);
+    }
+
+    // Вычисляем изменения по каждой оси отдельно
+    const posDeltaX = Math.abs(src.position.x - this.lastPos.x);
+    const posDeltaY = Math.abs(src.position.y - this.lastPos.y);
+    const posDeltaZ = Math.abs(src.position.z - this.lastPos.z);
     const posDelta = src.position.distanceTo(this.lastPos);
+    
     const rotDelta = src.quaternion.angleTo(this.lastRot);
 
-    // Применяем сглаживание только если изменение достаточно большое
+    // Применяем очень агрессивное сглаживание позиции
     if (posDelta > this.data.minMove) {
-      dst.position.lerp(src.position, this.data.pos);
+      // Создаем целевую позицию с фиксацией Y
+      const targetPos = new THREE.Vector3(
+        src.position.x,
+        this.data.lockY ? this.initialY : src.position.y,
+        src.position.z
+      );
+      
+      // Используем lerp для плавного перехода
+      dst.position.lerp(targetPos, this.data.pos);
       this.lastPos.copy(dst.position);
     } else {
-      // Если изменение слишком маленькое, не обновляем позицию
+      // Игнорируем микро-изменения - оставляем позицию как есть
       dst.position.copy(this.lastPos);
     }
 
+    // Очень агрессивное сглаживание ротации с большим порогом
     if (rotDelta > this.data.minRot) {
       dst.quaternion.slerp(src.quaternion, this.data.rot);
       this.lastRot.copy(dst.quaternion);
     } else {
-      // Если изменение слишком маленькое, не обновляем ротацию
+      // Игнорируем микро-повороты - оставляем ротацию как есть
       dst.quaternion.copy(this.lastRot);
     }
 
