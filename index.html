@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Статичные модели с анимацией</title>
+<title>WebAR — 3Статичные модели с анимацией</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -28,32 +28,26 @@ html, body {
 </div>
 
 <a-scene embedded
-         vr-mode-ui="enabled:false"
-         renderer="alpha:true"
-         arjs="sourceType: webcam; debugUIEnabled: false;">
+        vr-mode-ui="enabled:false"
+        renderer="alpha:true"
+        arjs="sourceType: webcam; debugUIEnabled: false;">
 
-  <!-- Камера AR.js -->
   <a-entity camera look-controls="enabled:false">
 
-    <!-- HUD: статичные модели -->
     <a-entity id="hud" position="0 0 -2">
 
-      <!-- Левая модель -->
       <a-entity id="leftModel"
         gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-        position="-0.6 -0.4 0"
-        scale="0.05 0.05 0.05"
-        animation-mixer
-        visible="false">
+        position="-0.3 -0.4 0"
+        scale="0 0 0"   <!-- Начинаем с нуля для анимации появления -->
+        animation-mixer>
       </a-entity>
 
-      <!-- Правая модель -->
       <a-entity id="rightModel"
         gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-        position="0.6 -0.4 0"
-        scale="0.05 0.05 0.05"
-        animation-mixer
-        visible="false">
+        position="0.3 -0.4 0"
+        scale="0 0 0"
+        animation-mixer>
       </a-entity>
 
     </a-entity>
@@ -70,20 +64,18 @@ startBtn.onclick = () => {
   startBtn.disabled = true;
   startScreen.style.display = 'none';
 
-  // Показываем модели через 5 секунд
   setTimeout(() => {
     const models = document.querySelectorAll('#hud [gltf-model]');
     models.forEach(model => {
-      model.setAttribute('visible', 'true');
-
       // Плавное появление через scale
-      model.setAttribute('scale', '0.05 0.05 0.05');
       model.setAttribute('animation', 'property: scale; from:0 0 0; to:0.05 0.05 0.05; dur:1000; easing: easeOutElastic');
 
-      // Анимация GLTF-модели
-      if(model.components['animation-mixer']){
-        model.components['animation-mixer'].play();
-      }
+      // Ждем загрузку модели, чтобы animation-mixer точно стартовал
+      model.addEventListener('model-loaded', () => {
+        if(model.components['animation-mixer']){
+          model.components['animation-mixer'].play();
+        }
+      });
     });
   }, 5000);
 };
