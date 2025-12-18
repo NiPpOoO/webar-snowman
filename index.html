@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1</title>
+<title>WebAR — 2</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -60,9 +60,9 @@ const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
 
-const markersCount = 6;
+const markersCount = 10; // Увеличено до 10 для поддержки всех маркеров
 
-// Компонент для полной стабилизации модели - полностью фиксирует позицию после первого появления
+// Компонент для полной стабилизации модели - полностью блокирует обновление позиции из родителя
 AFRAME.registerComponent('soft-stabilizer', {
   schema: {
     lockY: { default: true },     // Фиксировать вертикальную ось
@@ -96,11 +96,13 @@ AFRAME.registerComponent('soft-stabilizer', {
     // Инициализация при первом появлении маркера - фиксируем позицию НАВСЕГДА
     if (!this.initialized) {
       this.initialY = src.position.y;
+      // Просто копируем локальную позицию родителя
       this.fixedPosition = new THREE.Vector3(
         src.position.x,
         this.data.lockY ? this.initialY : src.position.y,
         src.position.z
       );
+      
       dst.position.copy(this.fixedPosition);
       this.initialized = true;
       
@@ -110,9 +112,19 @@ AFRAME.registerComponent('soft-stabilizer', {
       }
     }
     
-    // ВСЕГДА используем фиксированную позицию (НИКОГДА не обновляем)
+    // ВСЕГДА используем фиксированную позицию и блокируем обновление из родителя
     if (this.fixedPosition) {
-      dst.position.copy(this.fixedPosition);
+      // Полностью перезаписываем позицию, игнорируя любые изменения от родителя
+      dst.position.set(
+        this.fixedPosition.x,
+        this.fixedPosition.y,
+        this.fixedPosition.z
+      );
+      
+      // Блокируем ротацию от родителя
+      if (this.data.lockRot) {
+        dst.quaternion.set(0, 0, 0, 1); // Нет поворота
+      }
     }
 
     // Показываем контент
@@ -127,7 +139,7 @@ AFRAME.registerComponent('soft-stabilizer', {
 AFRAME.registerComponent('look-at-camera', {
   schema: {
     enabled: { default: true },
-    smoothing: { default: 0.1 }
+    smoothing: { default: 0.15 }
   },
   init() {
     this.camera = null;
@@ -142,25 +154,22 @@ AFRAME.registerComponent('look-at-camera', {
       if (!this.camera) return;
     }
 
-    // Получаем позицию камеры и модели в локальных координатах родителя
-    const cameraEl = this.camera;
-    const modelEl = this.el;
-    
-    // Получаем мировые позиции
+    // Получаем мировые позиции камеры и модели
     const cameraWorldPos = new THREE.Vector3();
     const modelWorldPos = new THREE.Vector3();
-    cameraEl.object3D.getWorldPosition(cameraWorldPos);
-    modelEl.object3D.getWorldPosition(modelWorldPos);
+    this.camera.object3D.getWorldPosition(cameraWorldPos);
+    this.el.object3D.getWorldPosition(modelWorldPos);
     
-    // Вычисляем направление к камере в горизонтальной плоскости
+    // Вычисляем направление к камере в горизонтальной плоскости (XZ)
     const dx = cameraWorldPos.x - modelWorldPos.x;
     const dz = cameraWorldPos.z - modelWorldPos.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
     
     // Игнорируем если слишком близко
-    if (distance < 0.01) return;
+    if (distance < 0.001) return;
     
     // Вычисляем угол поворота только по оси Y (горизонтально)
+    // atan2(x, z) дает угол от оси Z к оси X
     const targetAngle = Math.atan2(dx, dz);
     
     // Инициализация
@@ -170,7 +179,7 @@ AFRAME.registerComponent('look-at-camera', {
       return;
     }
     
-    // Вычисляем разницу углов и нормализуем
+    // Вычисляем разницу углов и нормализуем в диапазон [-PI, PI]
     let diff = targetAngle - this.smoothAngle;
     while (diff > Math.PI) diff -= 2 * Math.PI;
     while (diff < -Math.PI) diff += 2 * Math.PI;
@@ -178,12 +187,12 @@ AFRAME.registerComponent('look-at-camera', {
     // Применяем сглаживание
     this.smoothAngle += diff * this.data.smoothing;
     
-    // Нормализуем угол
+    // Нормализуем угол в диапазон [-PI, PI]
     while (this.smoothAngle > Math.PI) this.smoothAngle -= 2 * Math.PI;
     while (this.smoothAngle < -Math.PI) this.smoothAngle += 2 * Math.PI;
     
-    // Применяем к модели
-    this.el.object3D.rotation.y = this.smoothAngle;
+    // Применяем поворот ТОЛЬКО по оси Y
+    this.el.object3D.rotation.set(0, this.smoothAngle, 0);
   }
 });
 
@@ -205,9 +214,10 @@ function createMarker(index) {
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
+  leftModel.setAttribute('rotation','0 0 0');
   leftModel.setAttribute('visible','true');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  leftModel.setAttribute('look-at-camera','smoothing: 0.1');
+  leftWrapper.setAttribute('look-at-camera','smoothing: 0.15');
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
 
@@ -218,9 +228,10 @@ function createMarker(index) {
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
+  rightModel.setAttribute('rotation','0 0 0');
   rightModel.setAttribute('visible','true');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  rightModel.setAttribute('look-at-camera','smoothing: 0.1');
+  rightWrapper.setAttribute('look-at-camera','smoothing: 0.15');
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
 
