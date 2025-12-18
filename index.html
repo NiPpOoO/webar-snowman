@@ -2,11 +2,14 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — модели + координаты маркера с шагом</title>
+<title>WebAR — 111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
+<!-- A-Frame -->
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+<!-- MindAR -->
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
@@ -15,48 +18,39 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #start {
   position:fixed; inset:0; background:#000;
   display:flex; align-items:center; justify-content:center;
-  z-index:100; pointer-events:auto;
+  z-index:10;
 }
 #start button {
-  padding:16px 26px; font-size:16px; border-radius:10px; border:none;
+  padding:16px 26px; font-size:16px;
+  border-radius:10px; border:none;
 }
 #status {
   position:fixed; bottom:12px; left:50%;
   transform:translateX(-50%);
   background:rgba(0,0,0,.6);
   color:#fff; padding:8px 12px;
-  border-radius:6px; z-index:101;
+  border-radius:6px; z-index:11;
+  display:none;
 }
 </style>
 </head>
 <body>
 
-<div id="start"><button id="startBtn">Запустить AR</button></div>
+<div id="start">
+  <button id="startBtn">Запустить AR</button>
+</div>
 <div id="status">Наведи камеру на маркер</div>
 
 <a-scene
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
   vr-mode-ui="enabled:false"
-  device-orientation-permission-ui="enabled:true"
+  device-orientation-permission-ui="enabled:false"
   renderer="alpha:true">
 
-  <a-camera look-controls="enabled:true"></a-camera>
+  <a-camera look-controls="enabled:false"></a-camera>
 
   <!-- Музыка -->
-  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
-
-  <!-- Модели всегда на экране -->
-  <a-entity id="modelsContainer" position="0 0 -2" visible="true">
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb" 
-              position="-0.5 -0.5 0" scale="0.05 0.05 0.05" 
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-    <a-entity gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb" 
-              position="0.5 -0.5 0" scale="0.05 0.05 0.05" 
-              animation-mixer="clip:*; loop:repeat"></a-entity>
-  </a-entity>
-
-  <!-- Скрытый маркер для координат -->
-  <a-entity id="markerTracker" mindar-image-target="targetIndex:0" visible="false"></a-entity>
+  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
 
 </a-scene>
 
@@ -64,49 +58,93 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
-const markerTracker = document.getElementById('markerTracker');
-const modelsContainer = document.getElementById('modelsContainer');
+const scene = document.querySelector('a-scene');
 
-let markerPosition = new THREE.Vector3();
-const step = 1.0; // шаг смещения модели относительно маркера, можно менять
+const markersCount = 6;
 
-startBtn.addEventListener('click', async () => {
+// функция округления к ближайшему шагу
+function snapToStep(value, step) {
+  return Math.round(value / step) * step;
+}
+
+// Функция создания маркера с моделями
+function createMarker(index) {
+  const marker = document.createElement('a-entity');
+  marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
+  scene.appendChild(marker);
+
+  // Контейнер моделей
+  const content = document.createElement('a-entity');
+  content.setAttribute('position','0 0 0');
+  marker.appendChild(content);
+
+  // Модель слева
+  const leftModel = document.createElement('a-entity');
+  leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
+  leftModel.setAttribute('scale','0.05 0.05 0.05');
+  leftModel.setAttribute('position','-0.5 -0.5 0');
+  leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  content.appendChild(leftModel);
+
+  // Модель справа
+  const rightModel = document.createElement('a-entity');
+  rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
+  rightModel.setAttribute('scale','0.05 0.05 0.05');
+  rightModel.setAttribute('position','0.5 -0.5 0');
+  rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  content.appendChild(rightModel);
+
+  // обновляем позицию контейнера с шагом
+  scene.addEventListener('frame', () => {
+    if(marker.object3D.visible){ // маркер найден
+      const pos = new THREE.Vector3();
+      marker.object3D.getWorldPosition(pos);
+
+      content.object3D.position.set(
+        snapToStep(pos.x, 1), // шаг 1
+        snapToStep(pos.y, 1),
+        snapToStep(pos.z, 1)
+      );
+    }
+  });
+
+  marker.addEventListener('targetFound', ()=>{
+    content.setAttribute('visible', true);
+    status.textContent = 'Маркер найден';
+  });
+
+  marker.addEventListener('targetLost', ()=>{
+    setTimeout(()=>{
+      content.setAttribute('visible', false);
+      status.textContent = 'Наведи камеру на маркер';
+    },200);
+  });
+
+  return marker;
+}
+
+// Создаем маркеры
+for(let i=0;i<markersCount;i++){
+  createMarker(i);
+}
+
+// Старт AR и музыки по кнопке
+startBtn.addEventListener('click', async ()=>{
   startBtn.disabled = true;
-  startScreen.style.display = 'none';
-
-  const scene = document.querySelector('a-scene');
-  const mindar = scene.systems['mindar-image-system'];
-
+  startScreen.style.display='none';
+  status.style.display='block';
   try {
+    const mindar = scene.systems['mindar-image-system'];
     await mindar.start();
-
     const music = document.getElementById('music');
-    if(music.components.sound) music.components.sound.playSound();
-
-    // Смещение модели относительно маркера
-    scene.addEventListener('frame', () => {
-      if(markerTracker.object3D){
-        markerTracker.object3D.getWorldPosition(markerPosition);
-
-        // Применяем шаг
-        modelsContainer.object3D.position.set(
-          0 + markerPosition.x * step,
-          0 + markerPosition.y * step,
-          -2 + markerPosition.z * step
-        );
-      }
-    });
-
-    // Статус маркера
-    markerTracker.addEventListener('targetFound', ()=>{status.textContent='Маркер найден';});
-    markerTracker.addEventListener('targetLost', ()=>{status.textContent='Наведи камеру на маркер';});
-
+    music.components.sound.playSound();
   } catch(e){
-    alert('Камера недоступна или отказано в доступе.');
+    alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
     console.error(e);
   }
 });
 </script>
+
 
 </body>
 </html>
