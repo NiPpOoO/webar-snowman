@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1222</title>
+<title>WebAR — 781222</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -121,15 +121,15 @@ AFRAME.registerComponent('soft-stabilizer', {
     }
 
     // Инициализация - только когда маркер виден и имеет валидную позицию
+    // Получаем мировую позицию маркера (более надежно)
+    const worldPos = new THREE.Vector3();
+    src.getWorldPosition(worldPos);
+    
+    // Проверяем, что позиция валидна (не все нули и не NaN)
+    const isValidPos = !isNaN(worldPos.x) && !isNaN(worldPos.y) && !isNaN(worldPos.z) &&
+                       (Math.abs(worldPos.x) > 0.001 || Math.abs(worldPos.y) > 0.001 || Math.abs(worldPos.z) > 0.001);
+    
     if (!this.initialized) {
-      // Получаем мировую позицию маркера (более надежно)
-      const worldPos = new THREE.Vector3();
-      src.getWorldPosition(worldPos);
-      
-      // Проверяем, что позиция валидна (не все нули и не NaN)
-      const isValidPos = !isNaN(worldPos.x) && !isNaN(worldPos.y) && !isNaN(worldPos.z) &&
-                         (worldPos.x !== 0 || worldPos.y !== 0 || worldPos.z !== 0);
-      
       if (!isValidPos) {
         // Позиция еще не валидна, ждем следующего кадра
         return;
@@ -159,6 +159,22 @@ AFRAME.registerComponent('soft-stabilizer', {
       this.el.setAttribute('visible', true);
       this.isVisible = true;
       return;
+    }
+    
+    // Если инициализирован, но stablePosition null - переинициализируем
+    if (this.initialized && !this.stablePosition && isValidPos) {
+      console.log('soft-stabilizer: переинициализация (stablePosition был null), позиция:', worldPos);
+      this.initialY = worldPos.y;
+      this.stablePosition = new THREE.Vector3(
+        worldPos.x,
+        this.data.lockY ? this.initialY : worldPos.y,
+        worldPos.z
+      );
+      this.targetPosition = this.stablePosition.clone();
+      this.positionHistory = [];
+      for (let i = 0; i < 5; i++) {
+        this.positionHistory.push(this.stablePosition.clone());
+      }
     }
     
     const currentTime = time || performance.now();
