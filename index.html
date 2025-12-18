@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1222</title>
+<title>WebAR — 8881222</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -69,7 +69,8 @@ AFRAME.registerComponent('soft-stabilizer', {
     lockRot: { default: true },         // Блокировать повороты полностью
     smoothing: { default: 0.1 },       // Сглаживание при обновлении
     minMoveDistance: { default: 2.0 },  // Порог для обновления (в единицах) - ОЧЕНЬ большой для полной стабильности
-    updateInterval: { default: 10000 }   // Интервал обновления в мс (10000 = 10 секунд) - реже обновляем
+    updateInterval: { default: 10000 },   // Интервал обновления в мс (10000 = 10 секунд) - реже обновляем
+    freezeAfterInit: { default: true }   // ПОЛНОСТЬЮ заморозить позицию после инициализации
   },
   init() {
     console.log('soft-stabilizer: инициализация компонента');
@@ -81,6 +82,7 @@ AFRAME.registerComponent('soft-stabilizer', {
     this.lastUpdateTime = 0;
     this.positionHistory = []; // История для медианного фильтра
     this.tickCount = 0; // Счетчик для отладки
+    this.positionFrozen = false; // Флаг полной заморозки позиции
   },
   tick(time) {
     this.tickCount++;
@@ -158,6 +160,14 @@ AFRAME.registerComponent('soft-stabilizer', {
       this.lastUpdateTime = time || performance.now();
       this.el.setAttribute('visible', true);
       this.isVisible = true;
+      
+      // ПОЛНОСТЬЮ замораживаем позицию после инициализации
+      if (this.data.freezeAfterInit) {
+        this.positionFrozen = true;
+        // Блокируем автоматическое обновление матрицы
+        dst.matrixAutoUpdate = false;
+        console.log('soft-stabilizer: позиция ЗАМОРОЖЕНА на 0,0,0, matrixAutoUpdate = false');
+      }
       return;
     }
     
@@ -185,26 +195,38 @@ AFRAME.registerComponent('soft-stabilizer', {
       this.isVisible = true;
       // Сбрасываем время обновления, чтобы не обновлять сразу
       this.lastUpdateTime = currentTime;
-      console.log('soft-stabilizer: переинициализация завершена, видимость установлена');
+      
+      // ПОЛНОСТЬЮ замораживаем позицию после переинициализации
+      if (this.data.freezeAfterInit) {
+        this.positionFrozen = true;
+        dst.matrixAutoUpdate = false;
+        console.log('soft-stabilizer: переинициализация завершена, позиция ЗАМОРОЖЕНА');
+      }
       return; // Выходим, чтобы не применять позицию дальше
     }
     
-    // ВСЕГДА используем стабильную позицию (не позицию маркера напрямую)
-    // Это гарантирует, что модель не будет дрожать между обновлениями
-    // Применяем КАЖДЫЙ КАДР, чтобы перезаписать любые изменения от MindAR
-    // ВАЖНО: content должен быть в позиции 0,0,0 относительно маркера для стабильности
-    // КРИТИЧНО: применяем КАЖДЫЙ КАДР, чтобы заблокировать любые изменения от MindAR
+    // ПОЛНАЯ БЛОКИРОВКА ПОЗИЦИИ после инициализации
+    // Это гарантирует, что модель НЕ будет дрожать вообще
     if (this.stablePosition) {
-      // ПОЛНОСТЬЮ фиксируем позицию на 0,0,0 относительно маркера
-      // Это означает, что модели всегда в центре маркера, БЕЗ ДРОЖАНИЯ
-      // Применяем КАЖДЫЙ КАДР для максимальной стабильности
-      // Используем прямое присваивание для гарантированного применения
+      // Если позиция заморожена - ПОЛНОСТЬЮ блокируем её и выходим
+      if (this.positionFrozen) {
+        // Позиция уже заморожена на 0,0,0 - НЕ обновляем её вообще
+        // matrixAutoUpdate = false уже установлен, поэтому позиция не изменится
+        return; // Выходим сразу - не делаем никаких обновлений
+      }
+      
+      // Если не заморожена - обычная логика (но это не должно происходить при freezeAfterInit=true)
       dst.position.set(0, 0, 0);
-      // Принудительно обновляем матрицу для гарантии применения позиции
       dst.updateMatrix();
     }
     
-    // Обновляем только с заданным интервалом (например, каждые 5 секунд)
+    // Обновляем только с заданным интервалом (например, каждые 10 секунд)
+    // НО: если позиция заморожена - НЕ обновляем вообще
+    if (this.positionFrozen) {
+      // Позиция заморожена - полностью пропускаем обновление
+      return;
+    }
+    
     if (timeSinceUpdate >= this.data.updateInterval) {
       // Проверяем, что стабильная позиция установлена
       if (!this.stablePosition) {
