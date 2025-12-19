@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 9111</title>
+<title>WebAR — 111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -62,13 +62,13 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 14;
 
-// Компонент для сглаживания и стабилизации моделей
+// Компонент для стабилизации и сглаживания моделей
 AFRAME.registerComponent('model-stabilizer', {
   schema: {
-    smoothing: { default: 0.15 },        // Коэффициент сглаживания (0-1, меньше = плавнее)
-    updateInterval: { default: 100 },  // Интервал обновления в мс
-    minMoveDistance: { default: 0.05 }, // Минимальное расстояние для обновления
-    freezeAfterInit: { default: true }  // Заморозить позицию после инициализации
+    smoothing: { default: 0.15 },
+    updateInterval: { default: 100 },
+    minMoveDistance: { default: 0.05 },
+    freezeAfterInit: { default: true }
   },
   init() {
     this.initialized = false;
@@ -89,39 +89,26 @@ AFRAME.registerComponent('model-stabilizer', {
     const currentTime = time || performance.now();
     const timeSinceUpdate = currentTime - this.lastUpdateTime;
     
-    // Если позиция заморожена - ПРИНУДИТЕЛЬНО фиксируем её каждый кадр
+    // Если позиция заморожена - фиксируем её каждый кадр
     if (this.positionFrozen && this.frozenWorldMatrix) {
-      // Блокируем ВСЕ обновления матрицы
       dst.matrixAutoUpdate = false;
       dst.matrixWorldNeedsUpdate = false;
-      
-      // ПРИНУДИТЕЛЬНО устанавливаем позицию на 0,0,0 каждый кадр
       dst.position.set(0, 0, 0);
-      
-      // Блокируем ротацию
       dst.quaternion.set(0, 0, 0, 1);
-      
-      // Обновляем локальную матрицу
       dst.updateMatrix();
-      
-      // ПРИНУДИТЕЛЬНО устанавливаем замороженную мировую матрицу
-      // Это перезаписывает любые изменения от MindAR
       dst.matrixWorld.copy(this.frozenWorldMatrix);
-      
-      return; // Выходим сразу после фиксации
+      return;
     }
     
     // Проверяем видимость маркера
     const markerVisible = parent.getAttribute('visible') !== false;
     
     if (!markerVisible) {
-      this.el.setAttribute('visible', false);
       return;
     }
     
     // Инициализация при первом обнаружении маркера
     if (!this.initialized) {
-      // Проверяем, что маркер действительно виден и имеет валидную позицию
       if (markerVisible) {
         const worldPos = new THREE.Vector3();
         src.getWorldPosition(worldPos);
@@ -138,56 +125,39 @@ AFRAME.registerComponent('model-stabilizer', {
           }
           this.initialized = true;
           this.lastUpdateTime = currentTime;
-          this.el.setAttribute('visible', true);
           
-        // ПОЛНОСТЬЮ замораживаем позицию после инициализации
-        if (this.data.freezeAfterInit) {
-          // Устанавливаем позицию на 0,0,0 относительно маркера
-          dst.position.set(0, 0, 0);
-          dst.quaternion.set(0, 0, 0, 1);
-          dst.scale.set(1, 1, 1);
-          
-          // Обновляем матрицы
-          dst.updateMatrix();
-          if (dst.parent) {
-            dst.updateMatrixWorld(true);
+          // Замораживаем позицию после инициализации
+          if (this.data.freezeAfterInit) {
+            dst.position.set(0, 0, 0);
+            dst.quaternion.set(0, 0, 0, 1);
+            dst.scale.set(1, 1, 1);
+            dst.updateMatrix();
+            if (dst.parent) {
+              dst.updateMatrixWorld(true);
+            }
+            this.frozenWorldMatrix = dst.matrixWorld.clone();
+            this.positionFrozen = true;
+            dst.matrixAutoUpdate = false;
           }
-          
-          // ЗАПОМИНАЕМ мировую матрицу для фиксации
-          this.frozenWorldMatrix = dst.matrixWorld.clone();
-          this.positionFrozen = true;
-          
-          // Блокируем автоматическое обновление матрицы
-          dst.matrixAutoUpdate = false;
-          
-          console.log('Модель заморожена на позиции:', dst.position);
-        }
         }
       }
       return;
     }
     
-    // Если позиция заморожена - не обновляем её вообще
+    // Если позиция заморожена - не обновляем
     if (this.positionFrozen) {
-      return; // Уже обработано выше
+      return;
     }
     
-    // Обновляем позицию с интервалом (только если не заморожена)
+    // Обновляем позицию с интервалом
     if (timeSinceUpdate >= this.data.updateInterval) {
-      // Если позиция заморожена - не обновляем
-      if (this.positionFrozen) {
-        return;
-      }
+      const currentPos = new THREE.Vector3(0, 0, 0);
       
-      const currentPos = new THREE.Vector3(0, 0, 0); // Локальная позиция всегда 0,0,0
-      
-      // Добавляем в историю для медианного фильтра
       this.positionHistory.push(currentPos.clone());
       if (this.positionHistory.length > 5) {
         this.positionHistory.shift();
       }
       
-      // Вычисляем медианную позицию
       const sortedX = this.positionHistory.map(p => p.x).sort((a, b) => a - b);
       const sortedY = this.positionHistory.map(p => p.y).sort((a, b) => a - b);
       const sortedZ = this.positionHistory.map(p => p.z).sort((a, b) => a - b);
@@ -197,21 +167,17 @@ AFRAME.registerComponent('model-stabilizer', {
         sortedZ[Math.floor(sortedZ.length / 2)]
       );
       
-      // Проверяем расстояние для обновления (только если stablePosition инициализирован)
       if (this.stablePosition) {
         const distance = this.stablePosition.distanceTo(medianPos);
         
         if (distance >= this.data.minMoveDistance) {
           this.targetPosition.copy(medianPos);
-          // Применяем сглаживание
           this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
         }
         
-        // Устанавливаем позицию
         dst.position.copy(this.stablePosition);
         dst.updateMatrix();
       } else {
-        // Если stablePosition еще не инициализирован, просто устанавливаем 0,0,0
         dst.position.set(0, 0, 0);
         dst.updateMatrix();
       }
@@ -227,60 +193,41 @@ function createMarker(index) {
   marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
   scene.appendChild(marker);
 
-  // Контейнер моделей с сглаживанием
+  // Контейнер моделей с стабилизацией
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  // Применяем стабилизацию для сглаживания
   content.setAttribute('model-stabilizer', 'smoothing: 0.15; updateInterval: 100; minMoveDistance: 0.05; freezeAfterInit: true');
 
-  // Модель слева
+  // Модель слев
   const leftWrapper = document.createElement('a-entity');
   leftWrapper.setAttribute('position','-0.5 -0.5 0');
-  leftWrapper.setAttribute('visible','true');
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  leftModel.setAttribute('visible','true');
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
 
   // Модель справа
   const rightWrapper = document.createElement('a-entity');
   rightWrapper.setAttribute('position','0.5 -0.5 0');
-  rightWrapper.setAttribute('visible','true');
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
-  rightModel.setAttribute('visible','true');
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
-  
-  // Изначально скрываем контент
-  content.setAttribute('visible', 'false');
 
   marker.appendChild(content);
 
   marker.addEventListener('targetFound', ()=>{
-    console.log(`Маркер ${index} найден`);
-    marker.setAttribute('visible', true);
     content.setAttribute('visible', true);
-    // Убеждаемся, что модели видны
-    leftWrapper.setAttribute('visible', true);
-    rightWrapper.setAttribute('visible', true);
-    leftModel.setAttribute('visible', true);
-    rightModel.setAttribute('visible', true);
-    status.textContent = `Маркер ${index} найден`;
+    status.textContent = 'Маркер найден';
   });
 
   marker.addEventListener('targetLost', ()=>{
-    console.log(`Маркер ${index} потерян`);
     setTimeout(()=>{
-      marker.setAttribute('visible', false);
       content.setAttribute('visible', false);
-      leftWrapper.setAttribute('visible', false);
-      rightWrapper.setAttribute('visible', false);
       status.textContent = 'Наведи камеру на маркер';
     },200);
   });
