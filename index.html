@@ -2,16 +2,16 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 2111</title>
+<title>WebAR — 111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+<script src="https://unpkg.com/aframe@1.4.2/dist/aframe-master.min.js"></script>
+<script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
 <!-- MindAR -->
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+<script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
+<script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
 html, body { margin:0; width:100%; height:100%; overflow:hidden; }
@@ -62,7 +62,7 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 14;
 
-// Компонент для стабилизации и сглаживания моделей
+// Компонент для стабилизации моделей
 AFRAME.registerComponent('model-stabilizer', {
   schema: {
     smoothing: { default: 0.15 },
