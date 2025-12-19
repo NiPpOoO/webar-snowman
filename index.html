@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1222</title>
+<title>WebAR — 3322</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -88,18 +88,43 @@ AFRAME.registerComponent('soft-stabilizer', {
     // ЕСЛИ позиция заморожена - принудительно фиксируем позицию каждый кадр
     if (this.positionFrozen) {
       const dst = this.el.object3D;
+      
+      // КРИТИЧЕСКИ ВАЖНО: блокируем ВСЕ обновления матрицы от родителя
+      dst.matrixAutoUpdate = false;
+      dst.matrixWorldNeedsUpdate = false;
+      
       // Принудительно устанавливаем позицию на 0,0,0 каждый кадр
-      // Это перезаписывает любые изменения от MindAR
-      // ВАЖНО: делаем это БЕЗ проверки, чтобы гарантировать фиксацию
-      dst.position.set(0, 0, 0);
+      // Используем прямое присваивание через _x, _y, _z для обхода геттеров/сеттеров
+      if (dst.position._x !== undefined) {
+        dst.position._x = 0;
+        dst.position._y = 0;
+        dst.position._z = 0;
+      } else {
+        // Если _x не доступен, используем обычный set
+        dst.position.set(0, 0, 0);
+      }
+      
       if (this.data.lockRot) {
         dst.quaternion.set(0, 0, 0, 1);
       }
+      
       // Обновляем матрицу вручную для гарантии применения
-      // Используем updateMatrixWorld для обновления мировой матрицы
       dst.updateMatrix();
-      // Дополнительно: блокируем обновление от родителя
-      dst.matrixWorldNeedsUpdate = false;
+      
+      // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: пересчитываем мировую матрицу вручную
+      // но только на основе локальной матрицы, игнорируя родителя
+      if (dst.parent) {
+        // Создаем копию локальной матрицы как мировую
+        dst.matrixWorld.copy(dst.matrix);
+        // Применяем трансформацию родителя только один раз при инициализации
+        if (!this.parentMatrixApplied) {
+          dst.matrixWorld.premultiply(dst.parent.matrixWorld);
+          this.parentMatrixApplied = true;
+        }
+      } else {
+        dst.matrixWorld.copy(dst.matrix);
+      }
+      
       return; // Выходим после фиксации позиции
     }
     
@@ -188,7 +213,37 @@ AFRAME.registerComponent('soft-stabilizer', {
         dst.updateMatrix();
         // Дополнительно: блокируем обновление матрицы от родителя
         dst.matrixWorldNeedsUpdate = false;
-        console.log('soft-stabilizer: позиция ЗАМОРОЖЕНА на 0,0,0, matrixAutoUpdate = false');
+        
+        // РАДИКАЛЬНЫЙ ПОДХОД: полностью блокируем позицию через defineProperty
+        const self = this;
+        try {
+          Object.defineProperty(dst.position, 'x', {
+            get: () => 0,
+            set: () => {}, // Игнорируем все попытки изменить
+            configurable: false
+          });
+          Object.defineProperty(dst.position, 'y', {
+            get: () => 0,
+            set: () => {},
+            configurable: false
+          });
+          Object.defineProperty(dst.position, 'z', {
+            get: () => 0,
+            set: () => {},
+            configurable: false
+          });
+        } catch(e) {
+          // Если не получилось - используем переопределение метода
+          const originalPositionSet = dst.position.set.bind(dst.position);
+          dst.position.set = function(x, y, z) {
+            if (self.positionFrozen) {
+              return originalPositionSet(0, 0, 0);
+            }
+            return originalPositionSet(x, y, z);
+          };
+        }
+        
+        console.log('soft-stabilizer: позиция ПОЛНОСТЬЮ ЗАБЛОКИРОВАНА на 0,0,0 через defineProperty');
       }
       return;
     }
@@ -224,9 +279,40 @@ AFRAME.registerComponent('soft-stabilizer', {
         dst.matrixAutoUpdate = false;
         // Устанавливаем позицию на 0,0,0 и обновляем матрицу вручную
         dst.position.set(0, 0, 0);
+        dst.quaternion.set(0, 0, 0, 1);
         dst.updateMatrix();
         dst.matrixWorldNeedsUpdate = false;
-        console.log('soft-stabilizer: переинициализация завершена, позиция ЗАМОРОЖЕНА на 0,0,0');
+        
+        // РАДИКАЛЬНЫЙ ПОДХОД: полностью блокируем позицию через defineProperty
+        const self = this;
+        try {
+          Object.defineProperty(dst.position, 'x', {
+            get: () => 0,
+            set: () => {},
+            configurable: false
+          });
+          Object.defineProperty(dst.position, 'y', {
+            get: () => 0,
+            set: () => {},
+            configurable: false
+          });
+          Object.defineProperty(dst.position, 'z', {
+            get: () => 0,
+            set: () => {},
+            configurable: false
+          });
+        } catch(e) {
+          // Если не получилось - используем переопределение метода
+          const originalPositionSet = dst.position.set.bind(dst.position);
+          dst.position.set = function(x, y, z) {
+            if (self.positionFrozen) {
+              return originalPositionSet(0, 0, 0);
+            }
+            return originalPositionSet(x, y, z);
+          };
+        }
+        
+        console.log('soft-stabilizer: переинициализация завершена, позиция ПОЛНОСТЬЮ ЗАБЛОКИРОВАНА');
       }
       return; // Выходим, чтобы не применять позицию дальше
     }
