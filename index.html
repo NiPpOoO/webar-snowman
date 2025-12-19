@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 2111</title>
+<title>WebAR — 9111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -89,14 +89,26 @@ AFRAME.registerComponent('model-stabilizer', {
     const currentTime = time || performance.now();
     const timeSinceUpdate = currentTime - this.lastUpdateTime;
     
-    // Если позиция заморожена - фиксируем её каждый кадр
+    // Если позиция заморожена - ПРИНУДИТЕЛЬНО фиксируем её каждый кадр
     if (this.positionFrozen && this.frozenWorldMatrix) {
+      // Блокируем ВСЕ обновления матрицы
       dst.matrixAutoUpdate = false;
       dst.matrixWorldNeedsUpdate = false;
+      
+      // ПРИНУДИТЕЛЬНО устанавливаем позицию на 0,0,0 каждый кадр
       dst.position.set(0, 0, 0);
+      
+      // Блокируем ротацию
+      dst.quaternion.set(0, 0, 0, 1);
+      
+      // Обновляем локальную матрицу
       dst.updateMatrix();
+      
+      // ПРИНУДИТЕЛЬНО устанавливаем замороженную мировую матрицу
+      // Это перезаписывает любые изменения от MindAR
       dst.matrixWorld.copy(this.frozenWorldMatrix);
-      return;
+      
+      return; // Выходим сразу после фиксации
     }
     
     // Проверяем видимость маркера
@@ -128,26 +140,44 @@ AFRAME.registerComponent('model-stabilizer', {
           this.lastUpdateTime = currentTime;
           this.el.setAttribute('visible', true);
           
-          // Замораживаем позицию после инициализации
-          if (this.data.freezeAfterInit) {
-            dst.position.set(0, 0, 0);
-            dst.updateMatrix();
-            if (dst.parent) {
-              dst.updateMatrixWorld(true);
-            }
-            this.frozenWorldMatrix = dst.matrixWorld.clone();
-            this.positionFrozen = true;
-            dst.matrixAutoUpdate = false;
+        // ПОЛНОСТЬЮ замораживаем позицию после инициализации
+        if (this.data.freezeAfterInit) {
+          // Устанавливаем позицию на 0,0,0 относительно маркера
+          dst.position.set(0, 0, 0);
+          dst.quaternion.set(0, 0, 0, 1);
+          dst.scale.set(1, 1, 1);
+          
+          // Обновляем матрицы
+          dst.updateMatrix();
+          if (dst.parent) {
+            dst.updateMatrixWorld(true);
           }
+          
+          // ЗАПОМИНАЕМ мировую матрицу для фиксации
+          this.frozenWorldMatrix = dst.matrixWorld.clone();
+          this.positionFrozen = true;
+          
+          // Блокируем автоматическое обновление матрицы
+          dst.matrixAutoUpdate = false;
+          
+          console.log('Модель заморожена на позиции:', dst.position);
+        }
         }
       }
       return;
     }
     
-    // Обновляем позицию с интервалом
+    // Если позиция заморожена - не обновляем её вообще
+    if (this.positionFrozen) {
+      return; // Уже обработано выше
+    }
+    
+    // Обновляем позицию с интервалом (только если не заморожена)
     if (timeSinceUpdate >= this.data.updateInterval) {
-      const worldPos = new THREE.Vector3();
-      src.getWorldPosition(worldPos);
+      // Если позиция заморожена - не обновляем
+      if (this.positionFrozen) {
+        return;
+      }
       
       const currentPos = new THREE.Vector3(0, 0, 0); // Локальная позиция всегда 0,0,0
       
