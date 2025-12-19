@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 8111</title>
+<title>WebAR — 111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -97,14 +97,13 @@ AFRAME.registerComponent('model-stabilizer', {
     const currentTime = time || performance.now();
     const timeSinceUpdate = currentTime - this.lastUpdateTime;
     
-    // Если позиция заморожена - ПРИНУДИТЕЛЬНО фиксируем локальную позицию каждый кадр
-    if (this.positionFrozen) {
+    // Если позиция заморожена - ПРИНУДИТЕЛЬНО фиксируем её каждый кадр
+    if (this.positionFrozen && this.frozenWorldMatrix) {
       // Блокируем ВСЕ автоматические обновления
       dst.matrixAutoUpdate = false;
       dst.matrixWorldNeedsUpdate = false;
       
       // ПРИНУДИТЕЛЬНО устанавливаем локальную позицию на 0,0,0 относительно маркера
-      // Это гарантирует, что модель всегда находится в центре маркера
       dst.position.set(0, 0, 0);
       
       // Блокируем ротацию
@@ -120,15 +119,9 @@ AFRAME.registerComponent('model-stabilizer', {
       // Обновляем локальную матрицу
       dst.updateMatrix();
       
-      // Если есть замороженная мировая матрица - используем её
-      // Но обычно лучше позволить мировой матрице обновляться от родителя (маркера)
-      // чтобы модель двигалась вместе с маркером, но оставалась в его центре
-      if (this.frozenWorldMatrix) {
-        // Можно использовать замороженную мировую матрицу для полной фиксации
-        // dst.matrixWorld.copy(this.frozenWorldMatrix);
-        // Или позволить мировой матрице обновляться от родителя (рекомендуется)
-        // В этом случае модель будет двигаться с маркером, но останется в его центре
-      }
+      // ПРИНУДИТЕЛЬНО устанавливаем замороженную мировую матрицу
+      // Это перезаписывает любые изменения от MindAR
+      dst.matrixWorld.copy(this.frozenWorldMatrix);
       
       return; // Выходим сразу после фиксации
     }
@@ -159,7 +152,7 @@ AFRAME.registerComponent('model-stabilizer', {
           this.initialized = true;
           this.lastUpdateTime = currentTime;
           
-          // ПОЛНОСТЬЮ замораживаем локальную позицию относительно маркера
+          // ПОЛНОСТЬЮ замораживаем позицию после инициализации
           if (this.data.freezeAfterInit) {
             // Устанавливаем локальную позицию на 0,0,0 относительно маркера
             dst.position.set(0, 0, 0);
@@ -172,21 +165,15 @@ AFRAME.registerComponent('model-stabilizer', {
               dst.updateMatrixWorld(true);
             }
             
-            // Сохраняем масштаб для блокировки
+            // ЗАПОМИНАЕМ мировую матрицу для фиксации
+            this.frozenWorldMatrix = dst.matrixWorld.clone();
             this.frozenScale = dst.scale.clone();
-            
-            // Можно сохранить мировую матрицу, но лучше не использовать её
-            // чтобы модель двигалась вместе с маркером
-            // this.frozenWorldMatrix = dst.matrixWorld.clone();
             
             // Включаем заморозку позиции
             this.positionFrozen = true;
             
             // Блокируем автоматическое обновление матрицы
-            // Но мировая матрица будет обновляться от родителя (маркера)
             dst.matrixAutoUpdate = false;
-            
-            console.log('Модель зафиксирована на позиции 0,0,0 относительно маркера');
           }
         }
       }
