@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
+<meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WebAR Snowman</title>
   <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe-master.min.js"></script>
-  <style>
+<style>
     body {
       margin: 0;
       padding: 0;
       font-family: Arial, sans-serif;
       overflow: hidden;
     }
-    #start {
+#start {
       position: fixed;
       top: 0;
       left: 0;
@@ -35,8 +35,8 @@
     }
     #startBtn:hover {
       background: #45a049;
-    }
-    #status {
+}
+#status {
       position: fixed;
       bottom: 20px;
       left: 50%;
@@ -47,8 +47,8 @@
       border-radius: 5px;
       z-index: 999;
       display: none;
-    }
-  </style>
+}
+</style>
 </head>
 <body>
 
@@ -125,22 +125,24 @@ startBtn.addEventListener('click', async ()=>{
       } 
     });
     
-    // Создаем видео элемент для камеры
+    // Получаем или создаем видео элемент для камеры
     let video = document.getElementById('camera-stream');
     if (!video) {
+      // Если видео нет в ассетах, создаем его
       video = document.createElement('video');
       video.id = 'camera-stream';
       video.autoplay = true;
       video.playsInline = true;
       video.setAttribute('playsinline', '');
       video.setAttribute('webkit-playsinline', '');
-      video.style.display = 'none'; // Скрываем видео элемент
+      video.style.display = 'none';
       video.style.position = 'absolute';
       video.style.width = '1px';
       video.style.height = '1px';
       document.body.appendChild(video);
     }
     
+    // Подключаем поток к видео
     video.srcObject = stream;
     
     // Ждем, пока видео начнет воспроизводиться
@@ -195,12 +197,11 @@ startBtn.addEventListener('click', async ()=>{
     // Создаем или обновляем видеосферу
     let videoSphere = document.getElementById('camera-video');
     if (!videoSphere) {
-      // Создаем видеосферу динамически
+      // Создаем видеосферу динамически БЕЗ материала (установим через Three.js)
       videoSphere = document.createElement('a-videosphere');
       videoSphere.id = 'camera-video';
       videoSphere.setAttribute('rotation', '0 -90 0');
       videoSphere.setAttribute('radius', '500');
-      videoSphere.setAttribute('material', 'src', '#camera-stream; shader: flat');
       scene.appendChild(videoSphere);
       console.log('Видеосфера создана');
       
@@ -212,38 +213,53 @@ startBtn.addEventListener('click', async ()=>{
           videoSphere.addEventListener('loaded', resolve, { once: true });
         }
       });
-    } else {
-      // Обновляем существующую видеосферу
-      videoSphere.setAttribute('material', 'src', '#camera-stream');
-      console.log('Видеосфера обновлена');
     }
     
-    // Принудительно обновляем материал через компонент
-    if (videoSphere.components && videoSphere.components.material) {
-      videoSphere.components.material.updateProperties({ src: '#camera-stream' });
-      console.log('Материал видеосферы обновлен через компонент');
-    }
+    // Ждем еще немного для применения изменений
+    await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Альтернативный способ - обновляем напрямую через Three.js
+    // Обновляем напрямую через Three.js - это более надежный способ
     if (videoSphere.object3D && videoSphere.object3D.children[0]) {
       const mesh = videoSphere.object3D.children[0];
       if (mesh.material) {
         // Получаем THREE из A-Frame
         const THREE = AFRAME.THREE;
-        // Обновляем текстуру
+        
+        // Освобождаем старую текстуру, если есть
+        if (mesh.material.map) {
+          mesh.material.map.dispose();
+        }
+        
+        // Создаем новую текстуру из видео
         const texture = new THREE.VideoTexture(video);
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
+        texture.format = THREE.RGBAFormat; // Исправлено: RGBFormat удален в новых версиях
+        
+        // Обновляем материал
         mesh.material.map = texture;
         mesh.material.needsUpdate = true;
-        console.log('Текстура обновлена напрямую через Three.js');
+        
+        // Принудительно обновляем текстуру
+        texture.needsUpdate = true;
+        
+        console.log('Текстура обновлена напрямую через Three.js, размер:', video.videoWidth, 'x', video.videoHeight);
+        console.log('Материал меша:', {
+          hasMap: !!mesh.material.map,
+          mapType: mesh.material.map ? mesh.material.map.constructor.name : 'none',
+          needsUpdate: mesh.material.needsUpdate
+        });
+      } else {
+        console.warn('Материал не найден у меша видеосферы');
       }
+    } else {
+      console.warn('Меш видеосферы не найден, object3D:', !!videoSphere.object3D);
     }
     
     // Запускаем музыку
     const music = document.getElementById('music');
     if (music && music.components && music.components.sound) {
-      music.components.sound.playSound();
+    music.components.sound.playSound();
     } else {
       console.warn('Компонент звука не найден или еще не загружен');
     }
