@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 3322</title>
+<title>WebAR — 1222</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -83,47 +83,33 @@ AFRAME.registerComponent('soft-stabilizer', {
     this.positionHistory = []; // История для медианного фильтра
     this.tickCount = 0; // Счетчик для отладки
     this.positionFrozen = false; // Флаг полной заморозки позиции
+    this.parentMatrixApplied = false; // Флаг применения матрицы родителя
+    this.frozenWorldMatrix = null; // Замороженная мировая матрица
+    this.frozenWorldPosition = null; // Замороженная мировая позиция
+    this.frozenWorldQuaternion = null; // Замороженная мировая ротация
   },
   tick(time) {
-    // ЕСЛИ позиция заморожена - принудительно фиксируем позицию каждый кадр
-    if (this.positionFrozen) {
-      const dst = this.el.object3D;
-      
-      // КРИТИЧЕСКИ ВАЖНО: блокируем ВСЕ обновления матрицы от родителя
+    const dst = this.el.object3D;
+    
+    // ЕСЛИ позиция заморожена - принудительно фиксируем МИРОВУЮ позицию каждый кадр
+    if (this.positionFrozen && this.frozenWorldMatrix) {
+      // КРИТИЧЕСКИ ВАЖНО: блокируем ВСЕ обновления матрицы
       dst.matrixAutoUpdate = false;
       dst.matrixWorldNeedsUpdate = false;
       
-      // Принудительно устанавливаем позицию на 0,0,0 каждый кадр
-      // Используем прямое присваивание через _x, _y, _z для обхода геттеров/сеттеров
-      if (dst.position._x !== undefined) {
-        dst.position._x = 0;
-        dst.position._y = 0;
-        dst.position._z = 0;
-      } else {
-        // Если _x не доступен, используем обычный set
-        dst.position.set(0, 0, 0);
-      }
+      // ПРИНУДИТЕЛЬНО устанавливаем локальную позицию на 0,0,0
+      dst.position.set(0, 0, 0);
       
       if (this.data.lockRot) {
         dst.quaternion.set(0, 0, 0, 1);
       }
       
-      // Обновляем матрицу вручную для гарантии применения
+      // Обновляем локальную матрицу
       dst.updateMatrix();
       
-      // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: пересчитываем мировую матрицу вручную
-      // но только на основе локальной матрицы, игнорируя родителя
-      if (dst.parent) {
-        // Создаем копию локальной матрицы как мировую
-        dst.matrixWorld.copy(dst.matrix);
-        // Применяем трансформацию родителя только один раз при инициализации
-        if (!this.parentMatrixApplied) {
-          dst.matrixWorld.premultiply(dst.parent.matrixWorld);
-          this.parentMatrixApplied = true;
-        }
-      } else {
-        dst.matrixWorld.copy(dst.matrix);
-      }
+      // ПРИНУДИТЕЛЬНО устанавливаем замороженную мировую матрицу
+      // Это перезаписывает любые изменения от MindAR
+      dst.matrixWorld.copy(this.frozenWorldMatrix);
       
       return; // Выходим после фиксации позиции
     }
@@ -141,7 +127,6 @@ AFRAME.registerComponent('soft-stabilizer', {
     }
 
     const src = parent.object3D;
-    const dst = this.el.object3D;
 
     // Улучшенная проверка видимости маркера
     // Проверяем через событие targetFound, а не через позицию
@@ -211,39 +196,23 @@ AFRAME.registerComponent('soft-stabilizer', {
         dst.quaternion.set(0, 0, 0, 1);
         dst.scale.set(1, 1, 1);
         dst.updateMatrix();
+        
+        // КРИТИЧЕСКИ ВАЖНО: обновляем мировую матрицу один раз
+        if (dst.parent) {
+          dst.updateMatrixWorld(true);
+        }
+        
+        // ЗАПОМИНАЕМ мировую матрицу и позицию для фиксации
+        this.frozenWorldMatrix = dst.matrixWorld.clone();
+        this.frozenWorldPosition = new THREE.Vector3();
+        this.frozenWorldPosition.setFromMatrixPosition(dst.matrixWorld);
+        this.frozenWorldQuaternion = new THREE.Quaternion();
+        this.frozenWorldQuaternion.setFromRotationMatrix(dst.matrixWorld);
+        
         // Дополнительно: блокируем обновление матрицы от родителя
         dst.matrixWorldNeedsUpdate = false;
         
-        // РАДИКАЛЬНЫЙ ПОДХОД: полностью блокируем позицию через defineProperty
-        const self = this;
-        try {
-          Object.defineProperty(dst.position, 'x', {
-            get: () => 0,
-            set: () => {}, // Игнорируем все попытки изменить
-            configurable: false
-          });
-          Object.defineProperty(dst.position, 'y', {
-            get: () => 0,
-            set: () => {},
-            configurable: false
-          });
-          Object.defineProperty(dst.position, 'z', {
-            get: () => 0,
-            set: () => {},
-            configurable: false
-          });
-        } catch(e) {
-          // Если не получилось - используем переопределение метода
-          const originalPositionSet = dst.position.set.bind(dst.position);
-          dst.position.set = function(x, y, z) {
-            if (self.positionFrozen) {
-              return originalPositionSet(0, 0, 0);
-            }
-            return originalPositionSet(x, y, z);
-          };
-        }
-        
-        console.log('soft-stabilizer: позиция ПОЛНОСТЬЮ ЗАБЛОКИРОВАНА на 0,0,0 через defineProperty');
+        console.log('soft-stabilizer: позиция ЗАМОРОЖЕНА, мировая матрица запомнена:', this.frozenWorldPosition);
       }
       return;
     }
@@ -281,38 +250,22 @@ AFRAME.registerComponent('soft-stabilizer', {
         dst.position.set(0, 0, 0);
         dst.quaternion.set(0, 0, 0, 1);
         dst.updateMatrix();
-        dst.matrixWorldNeedsUpdate = false;
         
-        // РАДИКАЛЬНЫЙ ПОДХОД: полностью блокируем позицию через defineProperty
-        const self = this;
-        try {
-          Object.defineProperty(dst.position, 'x', {
-            get: () => 0,
-            set: () => {},
-            configurable: false
-          });
-          Object.defineProperty(dst.position, 'y', {
-            get: () => 0,
-            set: () => {},
-            configurable: false
-          });
-          Object.defineProperty(dst.position, 'z', {
-            get: () => 0,
-            set: () => {},
-            configurable: false
-          });
-        } catch(e) {
-          // Если не получилось - используем переопределение метода
-          const originalPositionSet = dst.position.set.bind(dst.position);
-          dst.position.set = function(x, y, z) {
-            if (self.positionFrozen) {
-              return originalPositionSet(0, 0, 0);
-            }
-            return originalPositionSet(x, y, z);
-          };
+        // КРИТИЧЕСКИ ВАЖНО: обновляем мировую матрицу один раз
+        if (dst.parent) {
+          dst.updateMatrixWorld(true);
         }
         
-        console.log('soft-stabilizer: переинициализация завершена, позиция ПОЛНОСТЬЮ ЗАБЛОКИРОВАНА');
+        // ЗАПОМИНАЕМ мировую матрицу и позицию для фиксации
+        this.frozenWorldMatrix = dst.matrixWorld.clone();
+        this.frozenWorldPosition = new THREE.Vector3();
+        this.frozenWorldPosition.setFromMatrixPosition(dst.matrixWorld);
+        this.frozenWorldQuaternion = new THREE.Quaternion();
+        this.frozenWorldQuaternion.setFromRotationMatrix(dst.matrixWorld);
+        
+        dst.matrixWorldNeedsUpdate = false;
+        
+        console.log('soft-stabilizer: переинициализация завершена, мировая матрица запомнена:', this.frozenWorldPosition);
       }
       return; // Выходим, чтобы не применять позицию дальше
     }
@@ -495,7 +448,7 @@ function createMarker(index) {
 
   // Модель слева
   const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position','-0.5 -0.5 0');
+  leftWrapper.setAttribute('position','-0.2 -0.5 0'); // Ближе к центру
   leftWrapper.setAttribute('visible','true');
   leftWrapper.setAttribute('rotation','0 0 0'); // Фиксированная ротация - без поворота к камере
   const leftModel = document.createElement('a-entity');
@@ -519,7 +472,7 @@ function createMarker(index) {
 
   // Модель справа
   const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position','0.5 -0.5 0');
+  rightWrapper.setAttribute('position','0.2 -0.5 0'); // Ближе к центру
   rightWrapper.setAttribute('visible','true');
   rightWrapper.setAttribute('rotation','0 0 0'); // Фиксированная ротация - без поворота к камере
   const rightModel = document.createElement('a-entity');
