@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 111</title>
+<title>WebAR — 1911</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -196,7 +196,7 @@ function createMarker(index) {
   // Контейнер моделей с стабилизацией
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  content.setAttribute('model-stabilizer', 'smoothing: 0.15; updateInterval: 100; minMoveDistance: 0.05; freezeAfterInit: true');
+  content.setAttribute('model-stabilizer', 'smoothing: 0.05; updateInterval: 300; minMoveDistance: 0.15; freezeAfterInit: true');
 
   // Модель слев
   const leftWrapper = document.createElement('a-entity');
