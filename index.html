@@ -2,16 +2,33 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 111</title>
+<title>WebAR — 911</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-<!-- A-Frame -->
-<script src="https://unpkg.com/aframe@1.4.2/dist/aframe-master.min.js"></script>
-<script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+<!-- A-Frame и MindAR загружаются асинхронно для ускорения -->
+<script>
+// Предзагрузка критических ресурсов
+const preloadScripts = [
+  'https://unpkg.com/aframe@1.4.2/dist/aframe-master.min.js',
+  'https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js',
+  'https://unpkg.com/mind-ar@1.1.4/dist/mindar-image.prod.js',
+  'https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js'
+];
 
-<!-- MindAR -->
-<script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
-<script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+// Загружаем скрипты последовательно для правильного порядка
+(async function() {
+  for (const src of preloadScripts) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = false;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+})();
+</script>
 
 <style>
 html, body { margin:0; width:100%; height:100%; overflow:hidden; }
@@ -65,9 +82,9 @@ const markersCount = 14;
 // Компонент для стабилизации моделей с расширенными методами
 AFRAME.registerComponent('model-stabilizer', {
   schema: {
-    smoothing: { default: 0.05 },
-    updateInterval: { default: 300 },
-    minMoveDistance: { default: 0.15 },
+    smoothing: { default: 0.02 },
+    updateInterval: { default: 500 },
+    minMoveDistance: { default: 0.25 },
     freezeAfterInit: { default: true },
     useEMA: { default: true },           // Использовать экспоненциальное скользящее среднее
     useVelocityFilter: { default: true }, // Фильтрация по скорости движения
@@ -85,7 +102,7 @@ AFRAME.registerComponent('model-stabilizer', {
     this.frozenScale = null;
     this.velocity = new THREE.Vector3(0, 0, 0);
     this.lastPosition = new THREE.Vector3(0, 0, 0);
-    this.emaAlpha = 0.1; // Коэффициент для EMA (меньше = более плавно)
+    this.emaAlpha = 0.05; // Коэффициент для EMA (меньше = более плавно, уменьшено для большего сглаживания)
   },
   tick(time) {
     const dst = this.el.object3D;
@@ -216,7 +233,7 @@ AFRAME.registerComponent('model-stabilizer', {
           let adaptiveThreshold = this.data.minMoveDistance;
           if (this.data.adaptiveFiltering) {
             const speed = this.velocity.length();
-            adaptiveThreshold = this.data.minMoveDistance * (1 + speed * 2);
+            adaptiveThreshold = this.data.minMoveDistance * (1 + speed * 5);
           }
           
           const distance = this.stablePosition.distanceTo(medianPos);
@@ -278,7 +295,7 @@ function createMarker(index) {
   // Контейнер моделей с стабилизацией
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  content.setAttribute('model-stabilizer', 'smoothing: 0.05; updateInterval: 300; minMoveDistance: 0.15; freezeAfterInit: true; useEMA: true; useVelocityFilter: true; lockScale: true; adaptiveFiltering: true');
+  content.setAttribute('model-stabilizer', 'smoothing: 0.02; updateInterval: 500; minMoveDistance: 0.25; freezeAfterInit: true; useEMA: true; useVelocityFilter: true; lockScale: true; adaptiveFiltering: true');
 
   // Модель слев
   const leftWrapper = document.createElement('a-entity');
