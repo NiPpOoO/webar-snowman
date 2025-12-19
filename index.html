@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 111</title>
+<title>WebAR — 8111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -97,11 +97,17 @@ AFRAME.registerComponent('model-stabilizer', {
     const currentTime = time || performance.now();
     const timeSinceUpdate = currentTime - this.lastUpdateTime;
     
-    // Если позиция заморожена - фиксируем её каждый кадр
-    if (this.positionFrozen && this.frozenWorldMatrix) {
+    // Если позиция заморожена - ПРИНУДИТЕЛЬНО фиксируем локальную позицию каждый кадр
+    if (this.positionFrozen) {
+      // Блокируем ВСЕ автоматические обновления
       dst.matrixAutoUpdate = false;
       dst.matrixWorldNeedsUpdate = false;
+      
+      // ПРИНУДИТЕЛЬНО устанавливаем локальную позицию на 0,0,0 относительно маркера
+      // Это гарантирует, что модель всегда находится в центре маркера
       dst.position.set(0, 0, 0);
+      
+      // Блокируем ротацию
       dst.quaternion.set(0, 0, 0, 1);
       
       // Блокируем масштаб, если включено
@@ -111,9 +117,20 @@ AFRAME.registerComponent('model-stabilizer', {
         dst.scale.set(1, 1, 1);
       }
       
+      // Обновляем локальную матрицу
       dst.updateMatrix();
-      dst.matrixWorld.copy(this.frozenWorldMatrix);
-      return;
+      
+      // Если есть замороженная мировая матрица - используем её
+      // Но обычно лучше позволить мировой матрице обновляться от родителя (маркера)
+      // чтобы модель двигалась вместе с маркером, но оставалась в его центре
+      if (this.frozenWorldMatrix) {
+        // Можно использовать замороженную мировую матрицу для полной фиксации
+        // dst.matrixWorld.copy(this.frozenWorldMatrix);
+        // Или позволить мировой матрице обновляться от родителя (рекомендуется)
+        // В этом случае модель будет двигаться с маркером, но останется в его центре
+      }
+      
+      return; // Выходим сразу после фиксации
     }
     
     // Проверяем видимость маркера
@@ -142,19 +159,34 @@ AFRAME.registerComponent('model-stabilizer', {
           this.initialized = true;
           this.lastUpdateTime = currentTime;
           
-          // Замораживаем позицию после инициализации
+          // ПОЛНОСТЬЮ замораживаем локальную позицию относительно маркера
           if (this.data.freezeAfterInit) {
+            // Устанавливаем локальную позицию на 0,0,0 относительно маркера
             dst.position.set(0, 0, 0);
             dst.quaternion.set(0, 0, 0, 1);
             dst.scale.set(1, 1, 1);
+            
+            // Обновляем матрицы
             dst.updateMatrix();
             if (dst.parent) {
               dst.updateMatrixWorld(true);
             }
-            this.frozenWorldMatrix = dst.matrixWorld.clone();
+            
+            // Сохраняем масштаб для блокировки
             this.frozenScale = dst.scale.clone();
+            
+            // Можно сохранить мировую матрицу, но лучше не использовать её
+            // чтобы модель двигалась вместе с маркером
+            // this.frozenWorldMatrix = dst.matrixWorld.clone();
+            
+            // Включаем заморозку позиции
             this.positionFrozen = true;
+            
+            // Блокируем автоматическое обновление матрицы
+            // Но мировая матрица будет обновляться от родителя (маркера)
             dst.matrixAutoUpdate = false;
+            
+            console.log('Модель зафиксирована на позиции 0,0,0 относительно маркера');
           }
         }
       }
