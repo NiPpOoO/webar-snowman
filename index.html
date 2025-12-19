@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1911</title>
+<title>WebAR — 111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -62,13 +62,17 @@ const scene = document.querySelector('a-scene');
 
 const markersCount = 14;
 
-// Компонент для стабилизации моделей
+// Компонент для стабилизации моделей с расширенными методами
 AFRAME.registerComponent('model-stabilizer', {
   schema: {
-    smoothing: { default: 0.15 },
-    updateInterval: { default: 100 },
-    minMoveDistance: { default: 0.05 },
-    freezeAfterInit: { default: true }
+    smoothing: { default: 0.05 },
+    updateInterval: { default: 300 },
+    minMoveDistance: { default: 0.15 },
+    freezeAfterInit: { default: true },
+    useEMA: { default: true },           // Использовать экспоненциальное скользящее среднее
+    useVelocityFilter: { default: true }, // Фильтрация по скорости движения
+    lockScale: { default: true },        // Блокировать масштаб
+    adaptiveFiltering: { default: true } // Адаптивная фильтрация
   },
   init() {
     this.initialized = false;
@@ -78,6 +82,10 @@ AFRAME.registerComponent('model-stabilizer', {
     this.positionHistory = [];
     this.lastUpdateTime = 0;
     this.frozenWorldMatrix = null;
+    this.frozenScale = null;
+    this.velocity = new THREE.Vector3(0, 0, 0);
+    this.lastPosition = new THREE.Vector3(0, 0, 0);
+    this.emaAlpha = 0.1; // Коэффициент для EMA (меньше = более плавно)
   },
   tick(time) {
     const dst = this.el.object3D;
@@ -95,6 +103,14 @@ AFRAME.registerComponent('model-stabilizer', {
       dst.matrixWorldNeedsUpdate = false;
       dst.position.set(0, 0, 0);
       dst.quaternion.set(0, 0, 0, 1);
+      
+      // Блокируем масштаб, если включено
+      if (this.data.lockScale && this.frozenScale) {
+        dst.scale.copy(this.frozenScale);
+      } else {
+        dst.scale.set(1, 1, 1);
+      }
+      
       dst.updateMatrix();
       dst.matrixWorld.copy(this.frozenWorldMatrix);
       return;
@@ -136,6 +152,7 @@ AFRAME.registerComponent('model-stabilizer', {
               dst.updateMatrixWorld(true);
             }
             this.frozenWorldMatrix = dst.matrixWorld.clone();
+            this.frozenScale = dst.scale.clone();
             this.positionFrozen = true;
             dst.matrixAutoUpdate = false;
           }
@@ -153,11 +170,13 @@ AFRAME.registerComponent('model-stabilizer', {
     if (timeSinceUpdate >= this.data.updateInterval) {
       const currentPos = new THREE.Vector3(0, 0, 0);
       
+      // Добавляем в историю для медианного фильтра
       this.positionHistory.push(currentPos.clone());
       if (this.positionHistory.length > 5) {
         this.positionHistory.shift();
       }
       
+      // Медианный фильтр
       const sortedX = this.positionHistory.map(p => p.x).sort((a, b) => a - b);
       const sortedY = this.positionHistory.map(p => p.y).sort((a, b) => a - b);
       const sortedZ = this.positionHistory.map(p => p.z).sort((a, b) => a - b);
@@ -168,17 +187,61 @@ AFRAME.registerComponent('model-stabilizer', {
       );
       
       if (this.stablePosition) {
-        const distance = this.stablePosition.distanceTo(medianPos);
-        
-        if (distance >= this.data.minMoveDistance) {
-          this.targetPosition.copy(medianPos);
-          this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
+        // Вычисляем скорость движения
+        if (this.data.useVelocityFilter) {
+          const deltaTime = timeSinceUpdate / 1000; // в секундах
+          this.velocity.subVectors(medianPos, this.lastPosition).divideScalar(deltaTime || 0.001);
+          this.lastPosition.copy(medianPos);
+          
+          // Адаптивная фильтрация: если скорость высокая, увеличиваем порог
+          let adaptiveThreshold = this.data.minMoveDistance;
+          if (this.data.adaptiveFiltering) {
+            const speed = this.velocity.length();
+            adaptiveThreshold = this.data.minMoveDistance * (1 + speed * 2);
+          }
+          
+          const distance = this.stablePosition.distanceTo(medianPos);
+          
+          if (distance >= adaptiveThreshold) {
+            this.targetPosition.copy(medianPos);
+            
+            // Используем EMA или обычную интерполяцию
+            if (this.data.useEMA) {
+              // Экспоненциальное скользящее среднее
+              this.stablePosition.lerp(this.targetPosition, this.emaAlpha);
+            } else {
+              // Обычная интерполяция
+              this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
+            }
+          }
+        } else {
+          // Простая проверка расстояния без фильтрации скорости
+          const distance = this.stablePosition.distanceTo(medianPos);
+          
+          if (distance >= this.data.minMoveDistance) {
+            this.targetPosition.copy(medianPos);
+            
+            if (this.data.useEMA) {
+              this.stablePosition.lerp(this.targetPosition, this.emaAlpha);
+            } else {
+              this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
+            }
+          }
         }
         
         dst.position.copy(this.stablePosition);
+        
+        // Блокируем масштаб, если включено
+        if (this.data.lockScale) {
+          dst.scale.set(1, 1, 1);
+        }
+        
         dst.updateMatrix();
       } else {
         dst.position.set(0, 0, 0);
+        if (this.data.lockScale) {
+          dst.scale.set(1, 1, 1);
+        }
         dst.updateMatrix();
       }
       
@@ -196,7 +259,7 @@ function createMarker(index) {
   // Контейнер моделей с стабилизацией
   const content = document.createElement('a-entity');
   content.setAttribute('position','0 0 0');
-  content.setAttribute('model-stabilizer', 'smoothing: 0.05; updateInterval: 300; minMoveDistance: 0.15; freezeAfterInit: true');
+  content.setAttribute('model-stabilizer', 'smoothing: 0.05; updateInterval: 300; minMoveDistance: 0.15; freezeAfterInit: true; useEMA: true; useVelocityFilter: true; lockScale: true; adaptiveFiltering: true');
 
   // Модель слев
   const leftWrapper = document.createElement('a-entity');
