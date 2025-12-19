@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebAR Snowman</title>
+  <title>22ebAR Snowman</title>
   <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe-master.min.js"></script>
   <style>
     body {
@@ -60,7 +60,11 @@
 <a-scene
   vr-mode-ui="enabled:false"
   device-orientation-permission-ui="enabled:false"
-  renderer="alpha:true">
+  renderer="alpha:true"
+  embedded>
+
+  <!-- Видео с камеры как фон -->
+  <a-videosphere id="camera-video" rotation="0 -90 0" material="src: #camera-stream"></a-videosphere>
 
   <a-camera look-controls="enabled:false">
     <!-- Модели закреплены перед камерой -->
@@ -98,11 +102,12 @@ const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
 
-// Упрощенный запуск - только камера и музыка
+// Упрощенный запуск - камера, модели и музыка
 startBtn.addEventListener('click', async ()=>{
   startBtn.disabled = true;
   startScreen.style.display='none';
   status.style.display='block';
+  status.textContent = 'Запрос доступа к камере...';
   
   try {
     // Ждём, пока сцена полностью загрузится
@@ -110,6 +115,63 @@ startBtn.addEventListener('click', async ()=>{
       await new Promise(resolve =>
         scene.addEventListener('loaded', resolve, { once:true })
       );
+    }
+    
+    // Запрашиваем доступ к камере
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        facingMode: 'environment', // Используем заднюю камеру на мобильных
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      } 
+    });
+    
+    // Создаем видео элемент для камеры
+    let video = document.getElementById('camera-stream');
+    if (!video) {
+      video = document.createElement('video');
+      video.id = 'camera-stream';
+      video.autoplay = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.style.display = 'none'; // Скрываем видео элемент
+      video.style.position = 'absolute';
+      video.style.width = '1px';
+      video.style.height = '1px';
+      document.body.appendChild(video);
+    }
+    
+    video.srcObject = stream;
+    
+    // Ждем, пока видео начнет воспроизводиться
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Таймаут загрузки видео'));
+      }, 10000);
+      
+      video.addEventListener('loadedmetadata', () => {
+        clearTimeout(timeout);
+        video.play().then(() => {
+          resolve();
+        }).catch(reject);
+      }, { once: true });
+      
+      video.addEventListener('error', (e) => {
+        clearTimeout(timeout);
+        reject(new Error('Ошибка воспроизведения видео: ' + e.message));
+      }, { once: true });
+    });
+    
+    // Обновляем видеосферу с потоком камеры
+    const videoSphere = document.getElementById('camera-video');
+    if (videoSphere) {
+      // Ждем немного, чтобы видео точно загрузилось
+      await new Promise(resolve => setTimeout(resolve, 100));
+      videoSphere.setAttribute('material', 'src', '#camera-stream');
+      console.log('Видеосфера обновлена с потоком камеры');
+    } else {
+      console.warn('Видеосфера не найдена');
     }
     
     // Запускаем музыку
@@ -122,7 +184,15 @@ startBtn.addEventListener('click', async ()=>{
     
     status.textContent = 'Модели закреплены перед камерой';
   } catch(e){
-    alert('Ошибка при запуске. Обновите страницу и попробуйте снова.');
+    let errorMsg = 'Ошибка при запуске камеры. ';
+    if (e.name === 'NotAllowedError') {
+      errorMsg += 'Разрешите доступ к камере в настройках браузера.';
+    } else if (e.name === 'NotFoundError') {
+      errorMsg += 'Камера не найдена.';
+    } else {
+      errorMsg += 'Обновите страницу и попробуйте снова.';
+    }
+    alert(errorMsg);
     console.error(e);
     // Восстанавливаем UI при ошибке
     startBtn.disabled = false;
