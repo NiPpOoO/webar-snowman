@@ -327,14 +327,42 @@ startBtn.addEventListener('click', async ()=>{
   startBtn.disabled = true;
   startScreen.style.display='none';
   status.style.display='block';
+  status.textContent = 'Запуск...';
+  
   try {
+    // Ждём, пока сцена полностью загрузится
+    if (!scene.hasLoaded) {
+      await new Promise(resolve =>
+        scene.addEventListener('loaded', resolve, { once:true })
+      );
+    }
+    
+    status.textContent = 'Инициализация камеры...';
+    
+    // Проверяем наличие системы MindAR
     const mindar = scene.systems['mindar-image-system'];
+    if (!mindar) {
+      throw new Error('MindAR система не найдена. Убедитесь, что скрипты загружены.');
+    }
+    
     await mindar.start();
+    
+    status.textContent = 'Наведи камеру на маркер';
+    
+    // Запускаем музыку
     const music = document.getElementById('music');
-    music.components.sound.playSound();
+    if (music && music.components && music.components.sound) {
+      music.components.sound.playSound();
+    } else {
+      console.warn('Компонент звука не найден или еще не загружен');
+    }
   } catch(e){
-    alert('Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.');
-    console.error(e);
+    console.error('Ошибка запуска AR:', e);
+    alert('Ошибка: ' + (e.message || 'Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.'));
+    // Восстанавливаем UI при ошибке
+    startBtn.disabled = false;
+    startScreen.style.display='flex';
+    status.style.display='none';
   }
 });
 </script>
