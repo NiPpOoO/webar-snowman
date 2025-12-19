@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 111</title>
+<title>WebAR — 2111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -109,32 +109,36 @@ AFRAME.registerComponent('model-stabilizer', {
     
     // Инициализация при первом обнаружении маркера
     if (!this.initialized) {
-      const worldPos = new THREE.Vector3();
-      src.getWorldPosition(worldPos);
-      
-      const isValidPos = !isNaN(worldPos.x) && !isNaN(worldPos.y) && !isNaN(worldPos.z) &&
-                         (Math.abs(worldPos.x) > 0.001 || Math.abs(worldPos.y) > 0.001 || Math.abs(worldPos.z) > 0.001);
-      
-      if (isValidPos) {
-        this.stablePosition = new THREE.Vector3(0, 0, 0);
-        this.targetPosition = this.stablePosition.clone();
-        for (let i = 0; i < 5; i++) {
-          this.positionHistory.push(this.stablePosition.clone());
-        }
-        this.initialized = true;
-        this.lastUpdateTime = currentTime;
-        this.el.setAttribute('visible', true);
+      // Проверяем, что маркер действительно виден и имеет валидную позицию
+      if (markerVisible) {
+        const worldPos = new THREE.Vector3();
+        src.getWorldPosition(worldPos);
         
-        // Замораживаем позицию после инициализации
-        if (this.data.freezeAfterInit) {
-          dst.position.set(0, 0, 0);
-          dst.updateMatrix();
-          if (dst.parent) {
-            dst.updateMatrixWorld(true);
+        const isValidPos = !isNaN(worldPos.x) && !isNaN(worldPos.y) && !isNaN(worldPos.z) &&
+                           (Math.abs(worldPos.x) > 0.001 || Math.abs(worldPos.y) > 0.001 || Math.abs(worldPos.z) > 0.001);
+        
+        if (isValidPos) {
+          this.stablePosition = new THREE.Vector3(0, 0, 0);
+          this.targetPosition = this.stablePosition.clone();
+          this.positionHistory = [];
+          for (let i = 0; i < 5; i++) {
+            this.positionHistory.push(this.stablePosition.clone());
           }
-          this.frozenWorldMatrix = dst.matrixWorld.clone();
-          this.positionFrozen = true;
-          dst.matrixAutoUpdate = false;
+          this.initialized = true;
+          this.lastUpdateTime = currentTime;
+          this.el.setAttribute('visible', true);
+          
+          // Замораживаем позицию после инициализации
+          if (this.data.freezeAfterInit) {
+            dst.position.set(0, 0, 0);
+            dst.updateMatrix();
+            if (dst.parent) {
+              dst.updateMatrixWorld(true);
+            }
+            this.frozenWorldMatrix = dst.matrixWorld.clone();
+            this.positionFrozen = true;
+            dst.matrixAutoUpdate = false;
+          }
         }
       }
       return;
@@ -163,18 +167,24 @@ AFRAME.registerComponent('model-stabilizer', {
         sortedZ[Math.floor(sortedZ.length / 2)]
       );
       
-      // Проверяем расстояние для обновления
-      const distance = this.stablePosition.distanceTo(medianPos);
-      
-      if (distance >= this.data.minMoveDistance) {
-        this.targetPosition.copy(medianPos);
-        // Применяем сглаживание
-        this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
+      // Проверяем расстояние для обновления (только если stablePosition инициализирован)
+      if (this.stablePosition) {
+        const distance = this.stablePosition.distanceTo(medianPos);
+        
+        if (distance >= this.data.minMoveDistance) {
+          this.targetPosition.copy(medianPos);
+          // Применяем сглаживание
+          this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
+        }
+        
+        // Устанавливаем позицию
+        dst.position.copy(this.stablePosition);
+        dst.updateMatrix();
+      } else {
+        // Если stablePosition еще не инициализирован, просто устанавливаем 0,0,0
+        dst.position.set(0, 0, 0);
+        dst.updateMatrix();
       }
-      
-      // Устанавливаем позицию
-      dst.position.copy(this.stablePosition);
-      dst.updateMatrix();
       
       this.lastUpdateTime = currentTime;
     }
@@ -193,36 +203,54 @@ function createMarker(index) {
   // Применяем стабилизацию для сглаживания
   content.setAttribute('model-stabilizer', 'smoothing: 0.15; updateInterval: 100; minMoveDistance: 0.05; freezeAfterInit: true');
 
-  // Модель слев
+  // Модель слева
   const leftWrapper = document.createElement('a-entity');
   leftWrapper.setAttribute('position','-0.5 -0.5 0');
+  leftWrapper.setAttribute('visible','true');
   const leftModel = document.createElement('a-entity');
   leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
   leftModel.setAttribute('scale','0.05 0.05 0.05');
   leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  leftModel.setAttribute('visible','true');
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
 
   // Модель справа
   const rightWrapper = document.createElement('a-entity');
   rightWrapper.setAttribute('position','0.5 -0.5 0');
+  rightWrapper.setAttribute('visible','true');
   const rightModel = document.createElement('a-entity');
   rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
   rightModel.setAttribute('scale','0.05 0.05 0.05');
   rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  rightModel.setAttribute('visible','true');
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
+  
+  // Изначально скрываем контент
+  content.setAttribute('visible', 'false');
 
   marker.appendChild(content);
 
   marker.addEventListener('targetFound', ()=>{
+    console.log(`Маркер ${index} найден`);
+    marker.setAttribute('visible', true);
     content.setAttribute('visible', true);
-    status.textContent = 'Маркер найден';
+    // Убеждаемся, что модели видны
+    leftWrapper.setAttribute('visible', true);
+    rightWrapper.setAttribute('visible', true);
+    leftModel.setAttribute('visible', true);
+    rightModel.setAttribute('visible', true);
+    status.textContent = `Маркер ${index} найден`;
   });
 
   marker.addEventListener('targetLost', ()=>{
+    console.log(`Маркер ${index} потерян`);
     setTimeout(()=>{
+      marker.setAttribute('visible', false);
       content.setAttribute('visible', false);
+      leftWrapper.setAttribute('visible', false);
+      rightWrapper.setAttribute('visible', false);
       status.textContent = 'Наведи камеру на маркер';
     },200);
   });
