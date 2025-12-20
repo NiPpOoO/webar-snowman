@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 3111</title>
+<title>WebAR — 93111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1.0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -120,10 +120,10 @@ const totalMarkers = snowmenCount * markersPerSnowman; // 21
 // Компонент для плавной стабилизации моделей с фильтрацией
 AFRAME.registerComponent('model-stabilizer', {
   schema: {
-    smoothing: { default: 0.15 },        // Коэффициент сглаживания позиции (0-1, меньше = плавнее)
-    rotationSmoothing: { default: 0.2 }, // Коэффициент сглаживания ротации
-    minMoveDistance: { default: 0.05 },  // Минимальное расстояние для обновления позиции
-    updateInterval: { default: 16 }      // Интервал обновления (мс, ~60fps)
+    smoothing: { default: 0.01 },        // Коэффициент сглаживания позиции (0-1, меньше = плавнее)
+    rotationSmoothing: { default: 0.01 }, // Коэффициент сглаживания ротации
+    minMoveDistance: { default: 0.5 },  // Минимальное расстояние для обновления позиции
+    updateInterval: { default: 8 }      // Интервал обновления (мс, ~60fps)
   },
   init() {
     this.initialized = false;
