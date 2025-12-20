@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 9993111</title>
+<title>WebAR — 443111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -14,7 +14,7 @@
 <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
-html, body { margin:0; width:100%; height:100%; overflow:hidden; }
+html, body { margin:0; width:100%; height:100%; overflow:hidden; touch-action:none; }
 #start {
   position:fixed; inset:0; background:#000;
   display:flex; align-items:center; justify-content:center;
@@ -24,6 +24,11 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   padding:16px 26px; font-size:16px;
   border-radius:10px; border:none;
   cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+#start button:active {
+  opacity:0.8;
 }
 #status {
   position:fixed; bottom:12px; left:50%;
@@ -35,6 +40,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   font-size:14px;
   text-align:center;
   max-width:90%;
+  pointer-events:none;
 }
 </style>
 </head>
@@ -69,10 +75,12 @@ const snowmenCount = 7;
 const markersPerSnowman = 3;
 const totalMarkers = snowmenCount * markersPerSnowman; // 21
 
-// Компонент для максимальной стабилизации моделей
+// Компонент для максимальной стабилизации моделей с фильтрацией
 AFRAME.registerComponent('model-stabilizer', {
   schema: {
-    freezeAfterInit: { default: true }
+    freezeAfterInit: { default: true },
+    stabilizationDelay: { default: 1000 }, // Задержка перед заморозкой (мс)
+    stabilityThreshold: { default: 0.01 }  // Порог стабильности позиции
   },
   init() {
     this.initialized = false;
@@ -81,6 +89,12 @@ AFRAME.registerComponent('model-stabilizer', {
     this.frozenLocalMatrix = null;
     this.frozenScale = new THREE.Vector3(1, 1, 1);
     this.frozenQuaternion = new THREE.Quaternion(0, 0, 0, 1);
+    
+    // Для фильтрации перед заморозкой
+    this.positionHistory = [];
+    this.stableStartTime = null;
+    this.lastStablePosition = null;
+    this.stabilizationSamples = 50; // Количество образцов для стабилизации (увеличено для лучшей фильтрации)
   },
   tick() {
     const dst = this.el.object3D;
@@ -89,8 +103,41 @@ AFRAME.registerComponent('model-stabilizer', {
     if (!parent || !parent.object3D) return;
     
     const markerVisible = parent.getAttribute('visible') !== false;
+    const currentTime = performance.now();
     
-    // Инициализация при первом обнаружении маркера
+    // Если позиция уже заморожена - ПРИНУДИТЕЛЬНО фиксируем каждый кадр
+    if (this.positionFrozen && this.frozenWorldMatrix && markerVisible) {
+      // ПРИНУДИТЕЛЬНО устанавливаем все параметры каждый кадр
+      // Используем прямую установку через матрицу для максимальной стабильности
+      dst.position.set(0, 0, 0);
+      dst.quaternion.copy(this.frozenQuaternion);
+      dst.scale.copy(this.frozenScale);
+      
+      // Восстанавливаем локальную матрицу
+      dst.matrix.copy(this.frozenLocalMatrix);
+      
+      // ПРИНУДИТЕЛЬНО устанавливаем замороженную мировую матрицу
+      // Это полностью перезаписывает любые изменения от MindAR
+      dst.matrixWorld.copy(this.frozenWorldMatrix);
+      
+      // Дополнительная защита: блокируем обновления через родителя
+      if (dst.parent) {
+        dst.parent.matrixWorldNeedsUpdate = false;
+      }
+      
+      // Блокируем обновления снова (на случай, если что-то их включило)
+      dst.matrixAutoUpdate = false;
+      dst.matrixWorldNeedsUpdate = false;
+      
+      // Дополнительная проверка: если матрица все же изменилась, восстанавливаем
+      if (!dst.matrixWorld.equals(this.frozenWorldMatrix)) {
+        dst.matrixWorld.copy(this.frozenWorldMatrix);
+      }
+      
+      return;
+    }
+    
+    // Инициализация и стабилизация перед заморозкой
     if (!this.initialized && markerVisible) {
       // Устанавливаем начальную позицию
       dst.position.set(0, 0, 0);
@@ -103,37 +150,97 @@ AFRAME.registerComponent('model-stabilizer', {
         dst.updateMatrixWorld(true);
       }
       
-      // ЗАПОМИНАЕМ матрицы и параметры для полной фиксации
-      this.frozenLocalMatrix = dst.matrix.clone();
-      this.frozenWorldMatrix = dst.matrixWorld.clone();
-      this.frozenScale.copy(dst.scale);
-      this.frozenQuaternion.copy(dst.quaternion);
+      // Собираем историю позиций для фильтрации
+      const worldPos = new THREE.Vector3();
+      dst.getWorldPosition(worldPos);
       
-      // Блокируем все автоматические обновления
-      dst.matrixAutoUpdate = false;
-      dst.matrixWorldNeedsUpdate = false;
+      this.positionHistory.push({
+        position: worldPos.clone(),
+        matrix: dst.matrixWorld.clone(),
+        time: currentTime
+      });
       
-      this.initialized = true;
-      this.positionFrozen = true;
-    }
-    
-    // Если позиция заморожена - ПРИНУДИТЕЛЬНО фиксируем каждый кадр
-    if (this.positionFrozen && this.frozenWorldMatrix && markerVisible) {
-      // ПРИНУДИТЕЛЬНО устанавливаем все параметры каждый кадр
-      // Это полностью перезаписывает любые изменения от MindAR
-      dst.position.set(0, 0, 0);
-      dst.quaternion.copy(this.frozenQuaternion);
-      dst.scale.copy(this.frozenScale);
+      // Ограничиваем размер истории
+      if (this.positionHistory.length > this.stabilizationSamples) {
+        this.positionHistory.shift();
+      }
       
-      // Восстанавливаем локальную матрицу
-      dst.matrix.copy(this.frozenLocalMatrix);
-      
-      // ПРИНУДИТЕЛЬНО устанавливаем замороженную мировую матрицу
-      dst.matrixWorld.copy(this.frozenWorldMatrix);
-      
-      // Блокируем обновления снова (на случай, если что-то их включило)
-      dst.matrixAutoUpdate = false;
-      dst.matrixWorldNeedsUpdate = false;
+      // Проверяем стабильность позиции
+      if (this.positionHistory.length >= this.stabilizationSamples) {
+        // Вычисляем медианную позицию
+        const positions = this.positionHistory.map(p => p.position);
+        const sortedX = positions.map(p => p.x).sort((a, b) => a - b);
+        const sortedY = positions.map(p => p.y).sort((a, b) => a - b);
+        const sortedZ = positions.map(p => p.z).sort((a, b) => a - b);
+        const medianPos = new THREE.Vector3(
+          sortedX[Math.floor(sortedX.length / 2)],
+          sortedY[Math.floor(sortedY.length / 2)],
+          sortedZ[Math.floor(sortedZ.length / 2)]
+        );
+        
+        // Проверяем, насколько стабильна позиция
+        let maxDeviation = 0;
+        for (const p of positions) {
+          const deviation = p.distanceTo(medianPos);
+          if (deviation > maxDeviation) {
+            maxDeviation = deviation;
+          }
+        }
+        
+        // Если позиция стабильна и прошло достаточно времени
+        if (maxDeviation < this.data.stabilityThreshold) {
+          if (!this.stableStartTime) {
+            this.stableStartTime = currentTime;
+            this.lastStablePosition = medianPos.clone();
+          } else {
+            // Проверяем, что позиция не изменилась значительно
+            const positionChange = medianPos.distanceTo(this.lastStablePosition);
+            if (positionChange > this.data.stabilityThreshold * 2) {
+              // Позиция изменилась - сбрасываем таймер
+              this.stableStartTime = currentTime;
+              this.lastStablePosition = medianPos.clone();
+            } else {
+              const stableDuration = currentTime - this.stableStartTime;
+              
+              // Если позиция стабильна достаточно долго - замораживаем
+              if (stableDuration >= this.data.stabilizationDelay) {
+                // Используем медианную матрицу из последних стабильных образцов
+                const stableSamples = this.positionHistory.slice(-10);
+                const medianIndex = Math.floor(stableSamples.length / 2);
+                const stableData = stableSamples[medianIndex];
+                
+                // ЗАПОМИНАЕМ матрицы и параметры для полной фиксации
+                this.frozenLocalMatrix = dst.matrix.clone();
+                this.frozenWorldMatrix = stableData.matrix.clone();
+                this.frozenScale.copy(dst.scale);
+                this.frozenQuaternion.copy(dst.quaternion);
+                
+                // Блокируем все автоматические обновления
+                dst.matrixAutoUpdate = false;
+                dst.matrixWorldNeedsUpdate = false;
+                
+                this.initialized = true;
+                this.positionFrozen = true;
+                
+                // Очищаем историю
+                this.positionHistory = [];
+              }
+            }
+          }
+        } else {
+          // Позиция нестабильна - сбрасываем таймер
+          this.stableStartTime = null;
+          this.lastStablePosition = null;
+        }
+      }
+    } else if (!markerVisible) {
+      // Маркер потерян - сбрасываем состояние
+      this.initialized = false;
+      this.positionFrozen = false;
+      this.positionHistory = [];
+      this.stableStartTime = null;
+      this.lastStablePosition = null;
+      dst.matrixAutoUpdate = true;
     }
   }
 });
@@ -154,7 +261,7 @@ for (let snowmanIndex = 0; snowmanIndex < snowmenCount; snowmanIndex++) {
   const content = document.createElement('a-entity');
   content.setAttribute('position', '0 0 0');
   content.setAttribute('visible', false);
-  content.setAttribute('model-stabilizer', 'freezeAfterInit: true');
+  content.setAttribute('model-stabilizer', 'freezeAfterInit: true; stabilizationDelay: 2000; stabilityThreshold: 0.008');
   
   // Модель слева
   const leftWrapper = document.createElement('a-entity');
@@ -241,7 +348,11 @@ for (let snowmanIndex = 0; snowmanIndex < snowmenCount; snowmanIndex++) {
 
 // Старт AR и музыки по кнопке
 startBtn.addEventListener('click', async () => {
+  // Предотвращаем множественные клики
+  if (startBtn.disabled) return;
+  
   startBtn.disabled = true;
+  startBtn.style.opacity = '0.6';
   startScreen.style.display = 'none';
   status.style.display = 'block';
   status.textContent = 'Запуск...';
@@ -278,10 +389,32 @@ startBtn.addEventListener('click', async () => {
     alert('Ошибка: ' + (e.message || 'Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.'));
     // Восстанавливаем UI при ошибке
     startBtn.disabled = false;
+    startBtn.style.opacity = '1';
     startScreen.style.display = 'flex';
     status.style.display = 'none';
   }
 });
+
+// Улучшенная обработка касаний для мобильных устройств
+let touchHandled = false;
+startBtn.addEventListener('touchstart', (e) => {
+  if (!touchHandled) {
+    touchHandled = true;
+    e.preventDefault();
+    startBtn.click();
+    setTimeout(() => { touchHandled = false; }, 300);
+  }
+}, { passive: false });
+
+// Дополнительная обработка для всех типов событий
+startBtn.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+});
+
+// Убеждаемся, что кнопка кликабельна
+startBtn.style.pointerEvents = 'auto';
+startBtn.style.userSelect = 'none';
+startBtn.style.webkitUserSelect = 'none';
 </script>
 </body>
 </html>
