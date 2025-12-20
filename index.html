@@ -2,14 +2,17 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 443111</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>WebAR — 9993111</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <!-- A-Frame -->
 <script src="https://unpkg.com/aframe@1.4.2/dist/aframe-master.min.js"></script>
 <script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
-<!-- MindAR -->
+<!-- MindAR Image Tracking - максимальная совместимость со всеми браузерами -->
 <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image.prod.js"></script>
 <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
@@ -55,7 +58,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; touch-action:no
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
   vr-mode-ui="enabled:false"
   device-orientation-permission-ui="enabled:false"
-  renderer="alpha:true; antialias:true;">
+  renderer="alpha:true; antialias:true; colorManagement:true; sortObjects:true;">
 
   <a-camera look-controls="enabled:false"></a-camera>
 
@@ -65,6 +68,45 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; touch-action:no
 </a-scene>
 
 <script>
+// Проверка совместимости браузера
+function checkBrowserCompatibility() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isChrome = /Chrome/.test(navigator.userAgent);
+  const isSafari = /Safari/.test(navigator.userAgent) && !isChrome;
+  const isFirefox = /Firefox/.test(navigator.userAgent);
+  
+  // Проверка поддержки необходимых API
+  const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const hasWebGL = !!document.createElement('canvas').getContext('webgl');
+  
+  if (!hasGetUserMedia) {
+    return { compatible: false, reason: 'Ваш браузер не поддерживает доступ к камере. Используйте Chrome, Safari или Firefox.' };
+  }
+  
+  if (!hasWebGL) {
+    return { compatible: false, reason: 'Ваш браузер не поддерживает WebGL. Обновите браузер.' };
+  }
+  
+  // Предупреждения для специфичных браузеров
+  if (isIOS && isSafari) {
+    // Safari на iOS работает хорошо
+    return { compatible: true, browser: 'Safari iOS' };
+  } else if (isAndroid && isChrome) {
+    // Chrome на Android работает хорошо
+    return { compatible: true, browser: 'Chrome Android' };
+  } else if (isFirefox) {
+    return { compatible: true, browser: 'Firefox' };
+  }
+  
+  return { compatible: true, browser: 'Unknown' };
+}
+
+const compatibility = checkBrowserCompatibility();
+if (!compatibility.compatible) {
+  console.warn('Совместимость:', compatibility.reason);
+}
+
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
@@ -261,7 +303,7 @@ for (let snowmanIndex = 0; snowmanIndex < snowmenCount; snowmanIndex++) {
   const content = document.createElement('a-entity');
   content.setAttribute('position', '0 0 0');
   content.setAttribute('visible', false);
-  content.setAttribute('model-stabilizer', 'freezeAfterInit: true; stabilizationDelay: 2000; stabilityThreshold: 0.008');
+  content.setAttribute('model-stabilizer', 'freezeAfterInit: true; stabilizationDelay: 2500; stabilityThreshold: 0.005');
   
   // Модель слева
   const leftWrapper = document.createElement('a-entity');
@@ -386,7 +428,21 @@ startBtn.addEventListener('click', async () => {
     }
   } catch(e) {
     console.error('Ошибка запуска AR:', e);
-    alert('Ошибка: ' + (e.message || 'Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.'));
+    
+    // Более информативные сообщения об ошибках
+    let errorMessage = 'Ошибка при запуске AR. ';
+    if (e.name === 'NotAllowedError' || e.message.includes('permission')) {
+      errorMessage += 'Разрешите доступ к камере в настройках браузера.';
+    } else if (e.name === 'NotFoundError' || e.message.includes('camera')) {
+      errorMessage += 'Камера не найдена. Убедитесь, что устройство имеет камеру.';
+    } else if (e.message.includes('MindAR')) {
+      errorMessage += 'Проблема с загрузкой AR библиотеки. Проверьте интернет-соединение.';
+    } else {
+      errorMessage += e.message || 'Попробуйте обновить страницу.';
+    }
+    
+    alert(errorMessage);
+    
     // Восстанавливаем UI при ошибке
     startBtn.disabled = false;
     startBtn.style.opacity = '1';
