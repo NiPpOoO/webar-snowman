@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 9111</title>
+<title>WebAR — 33111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -23,6 +23,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #start button {
   padding:16px 26px; font-size:16px;
   border-radius:10px; border:none;
+  cursor:pointer;
 }
 #status {
   position:fixed; bottom:12px; left:50%;
@@ -31,6 +32,9 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   color:#fff; padding:8px 12px;
   border-radius:6px; z-index:11;
   display:none;
+  font-size:14px;
+  text-align:center;
+  max-width:90%;
 }
 </style>
 </head>
@@ -45,7 +49,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
   vr-mode-ui="enabled:false"
   device-orientation-permission-ui="enabled:false"
-  renderer="alpha:true">
+  renderer="alpha:true; antialias:true;">
 
   <a-camera look-controls="enabled:false"></a-camera>
 
@@ -60,280 +64,193 @@ const startScreen = document.getElementById('start');
 const status = document.getElementById('status');
 const scene = document.querySelector('a-scene');
 
-const markersCount = 14;
+// Конфигурация: 7 снеговиков, по 3 маркера на каждого (итого 21 маркер)
+const snowmenCount = 7;
+const markersPerSnowman = 3;
+const totalMarkers = snowmenCount * markersPerSnowman; // 21
 
-// Компонент для стабилизации моделей с расширенными методами
+// Компонент для максимальной стабилизации моделей
 AFRAME.registerComponent('model-stabilizer', {
   schema: {
-    smoothing: { default: 0.02 },
-    updateInterval: { default: 500 },
-    minMoveDistance: { default: 0.25 },
-    freezeAfterInit: { default: true },
-    useEMA: { default: true },           // Использовать экспоненциальное скользящее среднее
-    useVelocityFilter: { default: true }, // Фильтрация по скорости движения
-    lockScale: { default: true },        // Блокировать масштаб
-    adaptiveFiltering: { default: true } // Адаптивная фильтрация
+    freezeAfterInit: { default: true }
   },
   init() {
     this.initialized = false;
     this.positionFrozen = false;
-    this.stablePosition = null;
-    this.targetPosition = null;
-    this.positionHistory = [];
-    this.lastUpdateTime = 0;
     this.frozenWorldMatrix = null;
-    this.frozenScale = null;
-    this.velocity = new THREE.Vector3(0, 0, 0);
-    this.lastPosition = new THREE.Vector3(0, 0, 0);
-    this.emaAlpha = 0.05; // Коэффициент для EMA (меньше = более плавно, уменьшено для большего сглаживания)
+    this.frozenLocalMatrix = null;
+    this.frozenScale = new THREE.Vector3(1, 1, 1);
+    this.frozenQuaternion = new THREE.Quaternion(0, 0, 0, 1);
   },
-  tick(time) {
+  tick() {
     const dst = this.el.object3D;
     const parent = this.el.parentEl;
     
     if (!parent || !parent.object3D) return;
     
-    const src = parent.object3D;
-    const currentTime = time || performance.now();
-    const timeSinceUpdate = currentTime - this.lastUpdateTime;
+    const markerVisible = parent.getAttribute('visible') !== false;
     
-    // Если позиция заморожена - ПРИНУДИТЕЛЬНО фиксируем её каждый кадр
-    if (this.positionFrozen && this.frozenWorldMatrix) {
-      // Блокируем ВСЕ автоматические обновления
+    // Инициализация при первом обнаружении маркера
+    if (!this.initialized && markerVisible) {
+      // Устанавливаем начальную позицию
+      dst.position.set(0, 0, 0);
+      dst.quaternion.set(0, 0, 0, 1);
+      dst.scale.set(1, 1, 1);
+      
+      // Обновляем матрицы
+      dst.updateMatrix();
+      if (dst.parent) {
+        dst.updateMatrixWorld(true);
+      }
+      
+      // ЗАПОМИНАЕМ матрицы и параметры для полной фиксации
+      this.frozenLocalMatrix = dst.matrix.clone();
+      this.frozenWorldMatrix = dst.matrixWorld.clone();
+      this.frozenScale.copy(dst.scale);
+      this.frozenQuaternion.copy(dst.quaternion);
+      
+      // Блокируем все автоматические обновления
       dst.matrixAutoUpdate = false;
       dst.matrixWorldNeedsUpdate = false;
       
-      // ПРИНУДИТЕЛЬНО устанавливаем локальную позицию на 0,0,0 относительно маркера
+      this.initialized = true;
+      this.positionFrozen = true;
+    }
+    
+    // Если позиция заморожена - ПРИНУДИТЕЛЬНО фиксируем каждый кадр
+    if (this.positionFrozen && this.frozenWorldMatrix && markerVisible) {
+      // ПРИНУДИТЕЛЬНО устанавливаем все параметры каждый кадр
+      // Это полностью перезаписывает любые изменения от MindAR
       dst.position.set(0, 0, 0);
+      dst.quaternion.copy(this.frozenQuaternion);
+      dst.scale.copy(this.frozenScale);
       
-      // Блокируем ротацию
-      dst.quaternion.set(0, 0, 0, 1);
-      
-      // Блокируем масштаб, если включено
-      if (this.data.lockScale && this.frozenScale) {
-        dst.scale.copy(this.frozenScale);
-      } else {
-        dst.scale.set(1, 1, 1);
-      }
-      
-      // Обновляем локальную матрицу
-      dst.updateMatrix();
+      // Восстанавливаем локальную матрицу
+      dst.matrix.copy(this.frozenLocalMatrix);
       
       // ПРИНУДИТЕЛЬНО устанавливаем замороженную мировую матрицу
-      // Это перезаписывает любые изменения от MindAR
       dst.matrixWorld.copy(this.frozenWorldMatrix);
       
-      return; // Выходим сразу после фиксации
-    }
-    
-    // Проверяем видимость маркера
-    const markerVisible = parent.getAttribute('visible') !== false;
-    
-    if (!markerVisible) {
-      return;
-    }
-    
-    // Инициализация при первом обнаружении маркера
-    if (!this.initialized) {
-      if (markerVisible) {
-        const worldPos = new THREE.Vector3();
-        src.getWorldPosition(worldPos);
-        
-        const isValidPos = !isNaN(worldPos.x) && !isNaN(worldPos.y) && !isNaN(worldPos.z) &&
-                           (Math.abs(worldPos.x) > 0.001 || Math.abs(worldPos.y) > 0.001 || Math.abs(worldPos.z) > 0.001);
-        
-        if (isValidPos) {
-          this.stablePosition = new THREE.Vector3(0, 0, 0);
-          this.targetPosition = this.stablePosition.clone();
-          this.positionHistory = [];
-          for (let i = 0; i < 5; i++) {
-            this.positionHistory.push(this.stablePosition.clone());
-          }
-          this.initialized = true;
-          this.lastUpdateTime = currentTime;
-          
-          // ПОЛНОСТЬЮ замораживаем позицию после инициализации
-          if (this.data.freezeAfterInit) {
-            // Устанавливаем локальную позицию на 0,0,0 относительно маркера
-            dst.position.set(0, 0, 0);
-            dst.quaternion.set(0, 0, 0, 1);
-            dst.scale.set(1, 1, 1);
-            
-            // Обновляем матрицы
-            dst.updateMatrix();
-            if (dst.parent) {
-              dst.updateMatrixWorld(true);
-            }
-            
-            // ЗАПОМИНАЕМ мировую матрицу для фиксации
-            this.frozenWorldMatrix = dst.matrixWorld.clone();
-            this.frozenScale = dst.scale.clone();
-            
-            // Включаем заморозку позиции
-            this.positionFrozen = true;
-            
-            // Блокируем автоматическое обновление матрицы
-            dst.matrixAutoUpdate = false;
-          }
-        }
-      }
-      return;
-    }
-    
-    // Если позиция заморожена - не обновляем
-    if (this.positionFrozen) {
-      return;
-    }
-    
-    // Обновляем позицию с интервалом
-    if (timeSinceUpdate >= this.data.updateInterval) {
-      const currentPos = new THREE.Vector3(0, 0, 0);
-      
-      // Добавляем в историю для медианного фильтра
-      this.positionHistory.push(currentPos.clone());
-      if (this.positionHistory.length > 5) {
-        this.positionHistory.shift();
-      }
-      
-      // Медианный фильтр
-      const sortedX = this.positionHistory.map(p => p.x).sort((a, b) => a - b);
-      const sortedY = this.positionHistory.map(p => p.y).sort((a, b) => a - b);
-      const sortedZ = this.positionHistory.map(p => p.z).sort((a, b) => a - b);
-      const medianPos = new THREE.Vector3(
-        sortedX[Math.floor(sortedX.length / 2)],
-        sortedY[Math.floor(sortedY.length / 2)],
-        sortedZ[Math.floor(sortedZ.length / 2)]
-      );
-      
-      if (this.stablePosition) {
-        // Вычисляем скорость движения
-        if (this.data.useVelocityFilter) {
-          const deltaTime = timeSinceUpdate / 1000; // в секундах
-          this.velocity.subVectors(medianPos, this.lastPosition).divideScalar(deltaTime || 0.001);
-          this.lastPosition.copy(medianPos);
-          
-          // Адаптивная фильтрация: если скорость высокая, увеличиваем порог
-          let adaptiveThreshold = this.data.minMoveDistance;
-          if (this.data.adaptiveFiltering) {
-            const speed = this.velocity.length();
-            adaptiveThreshold = this.data.minMoveDistance * (1 + speed * 5);
-          }
-          
-          const distance = this.stablePosition.distanceTo(medianPos);
-          
-          if (distance >= adaptiveThreshold) {
-            this.targetPosition.copy(medianPos);
-            
-            // Используем EMA или обычную интерполяцию
-            if (this.data.useEMA) {
-              // Экспоненциальное скользящее среднее
-              this.stablePosition.lerp(this.targetPosition, this.emaAlpha);
-            } else {
-              // Обычная интерполяция
-              this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
-            }
-          }
-        } else {
-          // Простая проверка расстояния без фильтрации скорости
-          const distance = this.stablePosition.distanceTo(medianPos);
-          
-          if (distance >= this.data.minMoveDistance) {
-            this.targetPosition.copy(medianPos);
-            
-            if (this.data.useEMA) {
-              this.stablePosition.lerp(this.targetPosition, this.emaAlpha);
-            } else {
-              this.stablePosition.lerp(this.targetPosition, this.data.smoothing);
-            }
-          }
-        }
-        
-        dst.position.copy(this.stablePosition);
-        
-        // Блокируем масштаб, если включено
-        if (this.data.lockScale) {
-          dst.scale.set(1, 1, 1);
-        }
-        
-        dst.updateMatrix();
-      } else {
-        dst.position.set(0, 0, 0);
-        if (this.data.lockScale) {
-          dst.scale.set(1, 1, 1);
-        }
-        dst.updateMatrix();
-      }
-      
-      this.lastUpdateTime = currentTime;
+      // Блокируем обновления снова (на случай, если что-то их включило)
+      dst.matrixAutoUpdate = false;
+      dst.matrixWorldNeedsUpdate = false;
     }
   }
 });
 
-// Функция создания маркера с моделями
-function createMarker(index) {
-  const marker = document.createElement('a-entity');
-  marker.setAttribute('mindar-image-target', `targetIndex:${index}`);
-  scene.appendChild(marker);
+// Создаем группы маркеров для каждого снеговика
+const markerGroups = [];
 
-  // Контейнер моделей с стабилизацией
+for (let snowmanIndex = 0; snowmanIndex < snowmenCount; snowmanIndex++) {
+  const group = {
+    snowmanIndex: snowmanIndex,
+    markers: [],
+    content: null,
+    activeMarker: null,
+    contentEntity: null
+  };
+  
+  // Создаем общий контейнер для моделей этого снеговика
   const content = document.createElement('a-entity');
-  content.setAttribute('position','0 0 0');
-  content.setAttribute('model-stabilizer', 'smoothing: 0.02; updateInterval: 500; minMoveDistance: 0.25; freezeAfterInit: true; useEMA: true; useVelocityFilter: true; lockScale: true; adaptiveFiltering: true');
-
-  // Модель слев
+  content.setAttribute('position', '0 0 0');
+  content.setAttribute('visible', false);
+  content.setAttribute('model-stabilizer', 'freezeAfterInit: true');
+  
+  // Модель слева
   const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position','-0.5 -0.5 0');
+  leftWrapper.setAttribute('position', '-0.3 0 0');
   const leftModel = document.createElement('a-entity');
-  leftModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  leftModel.setAttribute('scale','0.05 0.05 0.05');
-  leftModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  leftModel.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
+  leftModel.setAttribute('scale', '0.05 0.05 0.05');
+  leftModel.setAttribute('animation-mixer', 'clip:*; loop:repeat');
   leftWrapper.appendChild(leftModel);
   content.appendChild(leftWrapper);
-
+  
   // Модель справа
   const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position','0.5 -0.5 0');
+  rightWrapper.setAttribute('position', '0.3 0 0');
   const rightModel = document.createElement('a-entity');
-  rightModel.setAttribute('gltf-model','https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  rightModel.setAttribute('scale','0.05 0.05 0.05');
-  rightModel.setAttribute('animation-mixer','clip:*; loop:repeat');
+  rightModel.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
+  rightModel.setAttribute('scale', '0.05 0.05 0.05');
+  rightModel.setAttribute('animation-mixer', 'clip:*; loop:repeat');
   rightWrapper.appendChild(rightModel);
   content.appendChild(rightWrapper);
-
-  marker.appendChild(content);
-
-  marker.addEventListener('targetFound', ()=>{
-    content.setAttribute('visible', true);
-    status.textContent = 'Маркер найден';
-  });
-
-  marker.addEventListener('targetLost', ()=>{
-    setTimeout(()=>{
-      content.setAttribute('visible', false);
-      status.textContent = 'Наведи камеру на маркер';
-    },200);
-  });
-
-  return marker;
-}
-
-// Создаем маркеры
-for(let i=0;i<markersCount;i++){
-  createMarker(i);
+  
+  group.contentEntity = content;
+  
+  // Создаем 3 маркера для этого снеговика
+  for (let markerOffset = 0; markerOffset < markersPerSnowman; markerOffset++) {
+    const markerIndex = snowmanIndex * markersPerSnowman + markerOffset;
+    
+    const marker = document.createElement('a-entity');
+    marker.setAttribute('mindar-image-target', `targetIndex:${markerIndex}`);
+    marker.setAttribute('visible', false);
+    scene.appendChild(marker);
+    
+    group.markers.push(marker);
+    
+    // Обработчики событий для маркера
+    marker.addEventListener('targetFound', () => {
+      // Если контейнер уже прикреплен к другому маркеру, открепляем его
+      if (group.contentEntity.parentNode && group.contentEntity.parentNode !== marker) {
+        group.contentEntity.parentNode.removeChild(group.contentEntity);
+      }
+      
+      // Если контейнер еще не прикреплен, добавляем к текущему маркеру
+      if (!group.contentEntity.parentNode) {
+        marker.appendChild(group.contentEntity);
+      }
+      
+      group.activeMarker = marker;
+      group.contentEntity.setAttribute('visible', true);
+      status.textContent = `Снеговик ${snowmanIndex + 1} найден`;
+    });
+    
+    marker.addEventListener('targetLost', () => {
+      // Проверяем, что это текущий активный маркер
+      if (group.activeMarker === marker) {
+        setTimeout(() => {
+          // Проверяем, не стал ли активным другой маркер из группы
+          let otherActive = false;
+          for (const m of group.markers) {
+            if (m !== marker && m.getAttribute('visible') !== false) {
+              otherActive = true;
+              // Перемещаем контейнер к новому активному маркеру
+              if (group.contentEntity.parentNode) {
+                group.contentEntity.parentNode.removeChild(group.contentEntity);
+              }
+              m.appendChild(group.contentEntity);
+              group.activeMarker = m;
+              break;
+            }
+          }
+          
+          if (!otherActive) {
+            group.contentEntity.setAttribute('visible', false);
+            group.activeMarker = null;
+            status.textContent = 'Наведи камеру на маркер';
+          }
+        }, 200);
+      }
+    });
+  }
+  
+  group.content = content;
+  markerGroups.push(group);
 }
 
 // Старт AR и музыки по кнопке
-startBtn.addEventListener('click', async ()=>{
+startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
-  startScreen.style.display='none';
-  status.style.display='block';
+  startScreen.style.display = 'none';
+  status.style.display = 'block';
   status.textContent = 'Запуск...';
   
   try {
     // Ждём, пока сцена полностью загрузится
     if (!scene.hasLoaded) {
       await new Promise(resolve =>
-        scene.addEventListener('loaded', resolve, { once:true })
+        scene.addEventListener('loaded', resolve, { once: true })
       );
     }
     
@@ -356,16 +273,15 @@ startBtn.addEventListener('click', async ()=>{
     } else {
       console.warn('Компонент звука не найден или еще не загружен');
     }
-  } catch(e){
+  } catch(e) {
     console.error('Ошибка запуска AR:', e);
     alert('Ошибка: ' + (e.message || 'Камера недоступна или отказано в доступе. Обновите страницу и попробуйте снова.'));
     // Восстанавливаем UI при ошибке
     startBtn.disabled = false;
-    startScreen.style.display='flex';
-    status.style.display='none';
+    startScreen.style.display = 'flex';
+    status.style.display = 'none';
   }
 });
 </script>
-
 </body>
 </html>
