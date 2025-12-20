@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 228111</title>
+<title>WebAR — 928111</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1.0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -117,196 +117,72 @@ const snowmenCount = 7;
 const markersPerSnowman = 3;
 const totalMarkers = snowmenCount * markersPerSnowman; // 21
 
-// Компонент для агрессивной стабилизации моделей (для случаев несовпадения фото и реального объекта)
+// Компонент для полной фиксации моделей в пространстве
 AFRAME.registerComponent('model-stabilizer', {
-  schema: {
-    smoothing: { default: 0.03 },           // Коэффициент сглаживания позиции (очень маленький для плавности)
-    rotationSmoothing: { default: 0.05 },   // Коэффициент сглаживания ротации
-    minMoveDistance: { default: 0.15 },     // Минимальное расстояние для обновления (большой порог)
-    outlierThreshold: { default: 0.3 },    // Порог для определения выбросов
-    stabilizationTime: { default: 2000 },  // Время стабилизации перед заморозкой (мс)
-    freezeAfterStable: { default: true }    // Замораживать после стабилизации
-  },
+  schema: {},
   init() {
-    this.initialized = false;
-    this.stabilized = false;
-    this.smoothedPosition = new THREE.Vector3(0, 0, 0);
-    this.smoothedQuaternion = new THREE.Quaternion(0, 0, 0, 1);
-    this.targetPosition = new THREE.Vector3(0, 0, 0);
-    this.targetQuaternion = new THREE.Quaternion(0, 0, 0, 1);
-    this.frozenPosition = null;
-    this.frozenQuaternion = null;
-    this.stableStartTime = null;
-    
-    // Для агрессивной медианной фильтрации
-    this.positionHistory = [];
-    this.rotationHistory = [];
-    this.historySize = 20; // Большое окно для лучшей фильтрации
-    this.lastUpdateTime = 0;
-    this.velocity = new THREE.Vector3(0, 0, 0);
-    this.lastPosition = new THREE.Vector3(0, 0, 0);
+    this.frozen = false;
+    this.frozenMatrix = null;
   },
-  tick(time) {
+  tick() {
     const dst = this.el.object3D;
     const parent = this.el.parentEl;
     
     if (!parent || !parent.object3D) return;
     
     const markerVisible = parent.getAttribute('visible') !== false;
-    const currentTime = time || performance.now();
     
     if (!markerVisible) {
-      if (this.initialized) {
-        // Сбрасываем при потере маркера
-        this.initialized = false;
-        this.stabilized = false;
-        this.positionHistory = [];
-        this.rotationHistory = [];
-        this.frozenPosition = null;
-        this.frozenQuaternion = null;
-        this.stableStartTime = null;
+      // При потере маркера сбрасываем фиксацию
+      if (this.frozen) {
+        this.frozen = false;
+        this.frozenMatrix = null;
+        dst.matrixAutoUpdate = true;
       }
       return;
     }
     
-    // Инициализация при первом обнаружении
-    if (!this.initialized) {
+    // При первом обнаружении маркера - фиксируем позицию навсегда
+    if (!this.frozen) {
+      // Устанавливаем позицию на 0,0,0 относительно маркера
       dst.position.set(0, 0, 0);
       dst.quaternion.set(0, 0, 0, 1);
-      this.smoothedPosition.set(0, 0, 0);
-      this.smoothedQuaternion.set(0, 0, 0, 1);
-      this.targetPosition.set(0, 0, 0);
-      this.targetQuaternion.set(0, 0, 0, 1);
-      this.lastPosition.set(0, 0, 0);
-      this.velocity.set(0, 0, 0);
-      this.initialized = true;
-      this.stableStartTime = currentTime;
-    }
-    
-    // Получаем текущую позицию от маркера
-    const currentPos = new THREE.Vector3(0, 0, 0);
-    const currentRot = new THREE.Quaternion(0, 0, 0, 1);
-    
-    // Добавляем в историю для агрессивной медианной фильтрации
-    this.positionHistory.push(currentPos.clone());
-    this.rotationHistory.push(currentRot.clone());
-    
-    if (this.positionHistory.length > this.historySize) {
-      this.positionHistory.shift();
-      this.rotationHistory.shift();
-    }
-    
-    // Если позиция заморожена после стабилизации
-    if (this.stabilized && this.frozenPosition && this.data.freezeAfterStable) {
-      // Применяем замороженную позицию с очень плавным переходом (на случай если нужно обновить)
-      this.smoothedPosition.lerp(this.frozenPosition, 0.01);
-      this.smoothedQuaternion.slerp(this.frozenQuaternion, 0.01);
-      
-      dst.position.copy(this.smoothedPosition);
-      dst.quaternion.copy(this.smoothedQuaternion);
       dst.scale.set(1, 1, 1);
+      
+      // Обновляем матрицы
       dst.updateMatrix();
-      return;
+      if (dst.parent) {
+        dst.updateMatrixWorld(true);
+      }
+      
+      // ЗАПОМИНАЕМ мировую матрицу и фиксируем её навсегда
+      this.frozenMatrix = dst.matrixWorld.clone();
+      
+      // Блокируем все автоматические обновления
+      dst.matrixAutoUpdate = false;
+      dst.matrixWorldNeedsUpdate = false;
+      
+      this.frozen = true;
     }
     
-    // Агрессивная фильтрация: используем медианный фильтр с большим окном
-    if (this.positionHistory.length >= 5) {
-      const positions = this.positionHistory.map(p => p.clone());
+    // Каждый кадр ПРИНУДИТЕЛЬНО устанавливаем зафиксированную позицию
+    if (this.frozen && this.frozenMatrix) {
+      // Принудительно устанавливаем локальную позицию
+      dst.position.set(0, 0, 0);
+      dst.quaternion.set(0, 0, 0, 1);
+      dst.scale.set(1, 1, 1);
       
-      // Вычисляем медианную позицию (игнорируем выбросы)
-      const sortedX = positions.map(p => p.x).sort((a, b) => a - b);
-      const sortedY = positions.map(p => p.y).sort((a, b) => a - b);
-      const sortedZ = positions.map(p => p.z).sort((a, b) => a - b);
+      // Обновляем локальную матрицу
+      dst.updateMatrix();
       
-      const medianPos = new THREE.Vector3(
-        sortedX[Math.floor(sortedX.length / 2)],
-        sortedY[Math.floor(sortedY.length / 2)],
-        sortedZ[Math.floor(sortedZ.length / 2)]
-      );
+      // ПРИНУДИТЕЛЬНО устанавливаем замороженную мировую матрицу
+      // Это полностью перезаписывает любые изменения от MindAR
+      dst.matrixWorld.copy(this.frozenMatrix);
       
-      // Вычисляем среднее отклонение от медианы
-      let totalDeviation = 0;
-      for (const p of positions) {
-        totalDeviation += p.distanceTo(medianPos);
-      }
-      const avgDeviation = totalDeviation / positions.length;
-      
-      // Проверка на выбросы: если текущая позиция слишком далеко от медианы - игнорируем
-      const currentDeviation = currentPos.distanceTo(medianPos);
-      const isOutlier = currentDeviation > this.data.outlierThreshold || 
-                        currentDeviation > avgDeviation * 3;
-      
-      // Вычисляем скорость движения
-      const deltaTime = Math.min((currentTime - this.lastUpdateTime) / 1000, 0.1);
-      if (deltaTime > 0) {
-        this.velocity.subVectors(medianPos, this.lastPosition).divideScalar(deltaTime);
-        this.lastPosition.copy(medianPos);
-      }
-      
-      // Адаптивный порог: если скорость высокая, увеличиваем порог минимального движения
-      let adaptiveThreshold = this.data.minMoveDistance;
-      const speed = this.velocity.length();
-      if (speed > 0.5) {
-        adaptiveThreshold = this.data.minMoveDistance * (1 + speed);
-      }
-      
-      // Обновляем целевую позицию только если:
-      // 1. Не выброс
-      // 2. Изменение значительное (больше порога)
-      // 3. Позиция стабильна (низкая скорость или низкое отклонение)
-      const distance = this.smoothedPosition.distanceTo(medianPos);
-      const isStable = avgDeviation < 0.1 && speed < 0.3;
-      
-      if (!isOutlier && (distance > adaptiveThreshold || isStable)) {
-        this.targetPosition.copy(medianPos);
-      }
-      
-      // Очень плавная интерполяция позиции (очень маленький коэффициент)
-      this.smoothedPosition.lerp(this.targetPosition, this.data.smoothing);
-      
-      // Плавная интерполяция ротации
-      // Используем медианную ротацию из последних стабильных образцов
-      const stableRotations = this.rotationHistory.slice(-5);
-      if (stableRotations.length > 0) {
-        // Берем последнюю стабильную ротацию
-        this.targetQuaternion.copy(stableRotations[stableRotations.length - 1]);
-      }
-      this.smoothedQuaternion.slerp(this.targetQuaternion, this.data.rotationSmoothing);
-      
-      // Проверка стабильности для заморозки
-      if (!this.stabilized && this.positionHistory.length >= this.historySize) {
-        const isPositionStable = avgDeviation < 0.05 && speed < 0.1;
-        const stableDuration = currentTime - this.stableStartTime;
-        
-        if (isPositionStable && stableDuration >= this.data.stabilizationTime) {
-          // Замораживаем позицию
-          this.frozenPosition = this.smoothedPosition.clone();
-          this.frozenQuaternion = this.smoothedQuaternion.clone();
-          this.stabilized = true;
-        } else if (!isPositionStable) {
-          // Сбрасываем таймер если позиция нестабильна
-          this.stableStartTime = currentTime;
-        }
-      }
-    } else {
-      // Пока недостаточно данных - используем текущие значения с плавным сглаживанием
-      this.targetPosition.copy(currentPos);
-      this.targetQuaternion.copy(currentRot);
-      this.smoothedPosition.lerp(this.targetPosition, this.data.smoothing * 2);
-      this.smoothedQuaternion.slerp(this.targetQuaternion, this.data.rotationSmoothing * 2);
+      // Блокируем обновления снова (на случай если что-то их включило)
+      dst.matrixAutoUpdate = false;
+      dst.matrixWorldNeedsUpdate = false;
     }
-    
-    this.lastUpdateTime = currentTime;
-    
-    // Применяем сглаженную позицию и ротацию
-    dst.position.copy(this.smoothedPosition);
-    dst.quaternion.copy(this.smoothedQuaternion);
-    
-    // Фиксируем масштаб
-    dst.scale.set(1, 1, 1);
-    
-    // Обновляем матрицу
-    dst.updateMatrix();
   }
 });
 
@@ -326,7 +202,7 @@ for (let snowmanIndex = 0; snowmanIndex < snowmenCount; snowmanIndex++) {
   const content = document.createElement('a-entity');
   content.setAttribute('position', '0 0 0');
   content.setAttribute('visible', false);
-  content.setAttribute('model-stabilizer', 'smoothing: 0.03; rotationSmoothing: 0.05; minMoveDistance: 0.15; outlierThreshold: 0.3; stabilizationTime: 2000; freezeAfterStable: true');
+  content.setAttribute('model-stabilizer', '');
   
   // Модель слева
   const leftWrapper = document.createElement('a-entity');
