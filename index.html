@@ -2,22 +2,18 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 228111</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1.0">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>WebAR — 1Статичные модели с анимацией</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
-<script src="https://unpkg.com/aframe@1.4.2/dist/aframe-master.min.js" onerror="window.aframeError=true;"></script>
-<script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js" onerror="window.aframeExtrasError=true;"></script>
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
-<!-- MindAR Image Tracking - максимальная совместимость со всеми браузерами -->
-<script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image.prod.js" onerror="window.mindarError=true;"></script>
-<script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js" onerror="window.mindarAframeError=true;"></script>
+<!-- AR.js -->
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
 
 <style>
-html, body { margin:0; width:100%; height:100%; overflow:hidden; touch-action:none; }
+html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #start {
   position:fixed; inset:0; background:#000;
   display:flex; align-items:center; justify-content:center;
@@ -26,24 +22,6 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; touch-action:no
 #start button {
   padding:16px 26px; font-size:16px;
   border-radius:10px; border:none;
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-  touch-action:manipulation;
-}
-#start button:active {
-  opacity:0.8;
-}
-#status {
-  position:fixed; bottom:12px; left:50%;
-  transform:translateX(-50%);
-  background:rgba(0,0,0,.6);
-  color:#fff; padding:8px 12px;
-  border-radius:6px; z-index:11;
-  display:none;
-  font-size:14px;
-  text-align:center;
-  max-width:90%;
-  pointer-events:none;
 }
 </style>
 </head>
@@ -52,453 +30,68 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; touch-action:no
 <div id="start">
   <button id="startBtn">Запустить AR</button>
 </div>
-<div id="status">Наведи камеру на маркер</div>
 
-<a-scene
-  mindar-image="imageTargetSrc: https://nippooo.github.io/webar-snowman/assets/targets/snowman.mind; autoStart:false;"
-  vr-mode-ui="enabled:false"
-  device-orientation-permission-ui="enabled:false"
-  renderer="alpha:true; antialias:true; colorManagement:true; sortObjects:true; webgl2:false;">
+<a-scene embedded
+         vr-mode-ui="enabled:false"
+         renderer="alpha:true"
+         arjs="sourceType: webcam; debugUIEnabled: false;">
 
-  <a-camera look-controls="enabled:false"></a-camera>
+  <!-- Камера -->
+  <a-entity camera look-controls="enabled:false"></a-entity>
 
   <!-- Музыка -->
-  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
+  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
+
+  <!-- Контейнер для статичных моделей -->
+  <a-entity id="modelsContainer" position="0 0 -2" visible="false">
+
+    <a-entity id="leftModel"
+      gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
+      position="-0.5 -0.5 0"
+      scale="0.05 0.05 0.05"
+      animation-mixer>
+    </a-entity>
+
+    <a-entity id="rightModel"
+      gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
+      position="0.5 -0.5 0"
+      scale="0.05 0.05 0.05"
+      animation-mixer>
+    </a-entity>
+
+  </a-entity>
 
 </a-scene>
 
 <script>
-// Проверка совместимости браузера
-function checkBrowserCompatibility() {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isAndroid = /Android/.test(navigator.userAgent);
-  const isChrome = /Chrome/.test(navigator.userAgent);
-  const isSafari = /Safari/.test(navigator.userAgent) && !isChrome;
-  const isFirefox = /Firefox/.test(navigator.userAgent);
-  
-  // Проверка поддержки необходимых API
-  const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ||
-                          !!(navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia);
-  
-  // Проверка WebGL (пробуем оба варианта)
-  let hasWebGL = false;
-  try {
-    const canvas = document.createElement('canvas');
-    hasWebGL = !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
-  } catch(e) {
-    hasWebGL = false;
-  }
-  
-  if (!hasGetUserMedia) {
-    return { compatible: false, reason: 'Ваш браузер не поддерживает доступ к камере. Используйте Chrome, Safari или Firefox.' };
-  }
-  
-  if (!hasWebGL) {
-    return { compatible: false, reason: 'Ваш браузер не поддерживает WebGL. Обновите браузер до последней версии.' };
-  }
-  
-  // Предупреждения для специфичных браузеров
-  if (isIOS && isSafari) {
-    // Safari на iOS работает хорошо
-    return { compatible: true, browser: 'Safari iOS' };
-  } else if (isAndroid && isChrome) {
-    // Chrome на Android работает хорошо
-    return { compatible: true, browser: 'Chrome Android' };
-  } else if (isFirefox) {
-    return { compatible: true, browser: 'Firefox' };
-  }
-  
-  return { compatible: true, browser: 'Unknown' };
-}
-
-const compatibility = checkBrowserCompatibility();
-if (!compatibility.compatible) {
-  console.warn('Совместимость:', compatibility.reason);
-}
-
 const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
-const status = document.getElementById('status');
+const modelsContainer = document.getElementById('modelsContainer');
+const music = document.getElementById('music');
 
-// Ждем загрузки DOM
-let scene = null;
-function initScene() {
-  scene = document.querySelector('a-scene');
-  if (!scene) {
-    console.warn('Сцена не найдена, повторная попытка...');
-    setTimeout(initScene, 100);
-    return;
-  }
-  
-  // Проверяем загрузку всех скриптов
-  if (window.aframeError || window.mindarError || window.mindarAframeError) {
-    const errors = [];
-    if (window.aframeError) errors.push('A-Frame');
-    if (window.mindarError) errors.push('MindAR');
-    if (window.mindarAframeError) errors.push('MindAR A-Frame');
-    alert('Ошибка загрузки: ' + errors.join(', ') + '. Проверьте интернет-соединение и обновите страницу.');
-    return;
-  }
-  
-  // Проверяем наличие необходимых объектов
-  if (typeof AFRAME === 'undefined') {
-    alert('A-Frame не загружен. Обновите страницу.');
-    return;
-  }
-  
-  if (typeof MINDAR === 'undefined') {
-    alert('MindAR не загружен. Обновите страницу.');
-    return;
-  }
-  
-  console.log('Все скрипты загружены успешно');
-}
-
-// Инициализируем после загрузки страницы
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initScene);
-} else {
-  initScene();
-}
-
-// Конфигурация: 7 снеговиков, по 3 маркера на каждого (итого 21 маркер)
-const snowmenCount = 7;
-const markersPerSnowman = 3;
-const totalMarkers = snowmenCount * markersPerSnowman; // 21
-
-// Компонент для полной фиксации моделей в пространстве
-AFRAME.registerComponent('model-stabilizer', {
-  schema: {},
-  init() {
-    this.frozen = false;
-    this.frozenMatrix = null;
-  },
-  tick() {
-    const dst = this.el.object3D;
-    const parent = this.el.parentEl;
-    
-    if (!parent || !parent.object3D) return;
-    
-    const markerVisible = parent.getAttribute('visible') !== false;
-    
-    if (!markerVisible) {
-      // При потере маркера сбрасываем фиксацию
-      if (this.frozen) {
-        this.frozen = false;
-        this.frozenMatrix = null;
-        dst.matrixAutoUpdate = true;
-      }
-      return;
-    }
-    
-    // При первом обнаружении маркера - фиксируем позицию навсегда
-    if (!this.frozen) {
-      // Устанавливаем позицию на 0,0,0 относительно маркера
-      dst.position.set(0, 0, 0);
-      dst.quaternion.set(0, 0, 0, 1);
-      dst.scale.set(1, 1, 1);
-      
-      // Обновляем матрицы
-      dst.updateMatrix();
-      if (dst.parent) {
-        dst.updateMatrixWorld(true);
-      }
-      
-      // ЗАПОМИНАЕМ мировую матрицу и фиксируем её навсегда
-      this.frozenMatrix = dst.matrixWorld.clone();
-      
-      // Блокируем все автоматические обновления
-      dst.matrixAutoUpdate = false;
-      dst.matrixWorldNeedsUpdate = false;
-      
-      this.frozen = true;
-    }
-    
-    // Каждый кадр ПРИНУДИТЕЛЬНО устанавливаем зафиксированную позицию
-    if (this.frozen && this.frozenMatrix) {
-      // Принудительно устанавливаем локальную позицию
-      dst.position.set(0, 0, 0);
-      dst.quaternion.set(0, 0, 0, 1);
-      dst.scale.set(1, 1, 1);
-      
-      // Обновляем локальную матрицу
-      dst.updateMatrix();
-      
-      // ПРИНУДИТЕЛЬНО устанавливаем замороженную мировую матрицу
-      // Это полностью перезаписывает любые изменения от MindAR
-      dst.matrixWorld.copy(this.frozenMatrix);
-      
-      // Блокируем обновления снова (на случай если что-то их включило)
-      dst.matrixAutoUpdate = false;
-      dst.matrixWorldNeedsUpdate = false;
-    }
-  }
-});
-
-// Создаем группы маркеров для каждого снеговика
-const markerGroups = [];
-
-// Функция создания маркеров (вызывается после загрузки сцены)
-function createMarkers() {
-  // Проверяем наличие A-Frame
-  if (typeof AFRAME === 'undefined') {
-    console.warn('A-Frame не загружен, повторная попытка...');
-    setTimeout(createMarkers, 200);
-    return;
-  }
-  
-  if (!scene) {
-    scene = document.querySelector('a-scene');
-    if (!scene) {
-      console.warn('Сцена не найдена для создания маркеров');
-      setTimeout(createMarkers, 200);
-      return;
-    }
-  }
-  
-  // Очищаем существующие маркеры если есть
-  markerGroups.length = 0;
-  
-  for (let snowmanIndex = 0; snowmanIndex < snowmenCount; snowmanIndex++) {
-  const group = {
-    snowmanIndex: snowmanIndex,
-    markers: [],
-    content: null,
-    activeMarker: null,
-    contentEntity: null
-  };
-  
-  // Создаем общий контейнер для моделей этого снеговика
-  const content = document.createElement('a-entity');
-  content.setAttribute('position', '0 0 0');
-  content.setAttribute('visible', false);
-  content.setAttribute('model-stabilizer', '');
-  
-  // Модель слева
-  const leftWrapper = document.createElement('a-entity');
-  leftWrapper.setAttribute('position', '-0.3 0 0');
-  const leftModel = document.createElement('a-entity');
-  leftModel.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox.glb');
-  leftModel.setAttribute('scale', '0.05 0.05 0.05');
-  leftModel.setAttribute('animation-mixer', 'clip:*; loop:repeat');
-  leftWrapper.appendChild(leftModel);
-  content.appendChild(leftWrapper);
-  
-  // Модель справа
-  const rightWrapper = document.createElement('a-entity');
-  rightWrapper.setAttribute('position', '0.3 0 0');
-  const rightModel = document.createElement('a-entity');
-  rightModel.setAttribute('gltf-model', 'https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb');
-  rightModel.setAttribute('scale', '0.05 0.05 0.05');
-  rightModel.setAttribute('animation-mixer', 'clip:*; loop:repeat');
-  rightWrapper.appendChild(rightModel);
-  content.appendChild(rightWrapper);
-  
-  group.contentEntity = content;
-  
-  // Создаем 3 маркера для этого снеговика
-  for (let markerOffset = 0; markerOffset < markersPerSnowman; markerOffset++) {
-    const markerIndex = snowmanIndex * markersPerSnowman + markerOffset;
-    
-    const marker = document.createElement('a-entity');
-    marker.setAttribute('mindar-image-target', `targetIndex:${markerIndex}`);
-    marker.setAttribute('visible', false);
-    scene.appendChild(marker);
-    
-    group.markers.push(marker);
-    
-    // Обработчики событий для маркера
-    marker.addEventListener('targetFound', () => {
-      // Если контейнер уже прикреплен к другому маркеру, открепляем его
-      if (group.contentEntity.parentNode && group.contentEntity.parentNode !== marker) {
-        group.contentEntity.parentNode.removeChild(group.contentEntity);
-      }
-      
-      // Если контейнер еще не прикреплен, добавляем к текущему маркеру
-      if (!group.contentEntity.parentNode) {
-        marker.appendChild(group.contentEntity);
-      }
-      
-      group.activeMarker = marker;
-      group.contentEntity.setAttribute('visible', true);
-      status.textContent = `Снеговик ${snowmanIndex + 1} найден`;
-    });
-    
-    marker.addEventListener('targetLost', () => {
-      // Проверяем, что это текущий активный маркер
-      if (group.activeMarker === marker) {
-        setTimeout(() => {
-          // Проверяем, не стал ли активным другой маркер из группы
-          let otherActive = false;
-          for (const m of group.markers) {
-            if (m !== marker && m.getAttribute('visible') !== false) {
-              otherActive = true;
-              // Перемещаем контейнер к новому активному маркеру
-              if (group.contentEntity.parentNode) {
-                group.contentEntity.parentNode.removeChild(group.contentEntity);
-              }
-              m.appendChild(group.contentEntity);
-              group.activeMarker = m;
-              break;
-            }
-          }
-          
-          if (!otherActive) {
-            group.contentEntity.setAttribute('visible', false);
-            group.activeMarker = null;
-            status.textContent = 'Наведи камеру на маркер';
-          }
-        }, 200);
-      }
-    });
-  }
-  
-  group.content = content;
-  markerGroups.push(group);
-  }
-}
-
-// Создаем маркеры после загрузки
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(createMarkers, 500);
-  });
-} else {
-  setTimeout(createMarkers, 500);
-}
-
-// Функция запуска AR
-async function startAR() {
-  // Предотвращаем множественные клики
-  if (startBtn.disabled) return;
-  
-  // Проверяем наличие сцены
-  if (!scene) {
-    scene = document.querySelector('a-scene');
-    if (!scene) {
-      alert('Сцена не найдена. Обновите страницу.');
-      return;
-    }
-  }
-  
+startBtn.addEventListener('click', () => {
   startBtn.disabled = true;
-  startBtn.style.opacity = '0.6';
   startScreen.style.display = 'none';
-  status.style.display = 'block';
-  status.textContent = 'Запуск...';
-  
-  try {
-    // Ждём, пока сцена полностью загрузится
-    if (!scene.hasLoaded) {
-      status.textContent = 'Загрузка сцены...';
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Таймаут загрузки сцены'));
-        }, 10000);
-        
-        scene.addEventListener('loaded', () => {
-          clearTimeout(timeout);
-          resolve();
-        }, { once: true });
-      });
-    }
-    
-    status.textContent = 'Инициализация камеры...';
-    
-    // Дополнительная задержка для Android
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Проверяем наличие системы MindAR
-    let mindar = null;
-    let attempts = 0;
-    while (!mindar && attempts < 10) {
-      mindar = scene.systems['mindar-image-system'];
-      if (!mindar) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        attempts++;
-      }
-    }
-    
-    if (!mindar) {
-      throw new Error('MindAR система не найдена. Убедитесь, что скрипты загружены и обновите страницу.');
-    }
-    
-    status.textContent = 'Запрос доступа к камере...';
-    
-    // Запускаем MindAR с таймаутом
-    const startPromise = mindar.start();
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Таймаут запуска камеры')), 15000)
-    );
-    
-    await Promise.race([startPromise, timeoutPromise]);
-    
-    status.textContent = 'Наведи камеру на маркер';
-    
-    // Запускаем музыку
-    setTimeout(() => {
-      const music = document.getElementById('music');
-      if (music && music.components && music.components.sound) {
-        try {
-          music.components.sound.playSound();
-        } catch(e) {
-          console.warn('Не удалось запустить музыку:', e);
+
+  // Запускаем музыку
+  music.components.sound.playSound();
+
+  // Появление моделей через 5 секунд
+  setTimeout(() => {
+    modelsContainer.setAttribute('visible', true);
+
+    // Запускаем анимацию моделей
+    const models = modelsContainer.querySelectorAll('[gltf-model]');
+    models.forEach(model => {
+      model.addEventListener('model-loaded', () => {
+        if(model.components['animation-mixer']){
+          model.components['animation-mixer'].play();
         }
-      } else {
-        console.warn('Компонент звука не найден или еще не загружен');
-      }
-    }, 1000);
-    
-  } catch(e) {
-    console.error('Ошибка запуска AR:', e);
-    
-    // Более информативные сообщения об ошибках
-    let errorMessage = 'Ошибка при запуске AR. ';
-    if (e.name === 'NotAllowedError' || e.message.includes('permission') || e.message.includes('разрешение')) {
-      errorMessage += 'Разрешите доступ к камере в настройках браузера и обновите страницу.';
-    } else if (e.name === 'NotFoundError' || e.message.includes('camera') || e.message.includes('камера')) {
-      errorMessage += 'Камера не найдена. Убедитесь, что устройство имеет камеру.';
-    } else if (e.message.includes('MindAR') || e.message.includes('система не найдена')) {
-      errorMessage += 'Проблема с загрузкой AR библиотеки. Проверьте интернет-соединение и обновите страницу.';
-    } else if (e.message.includes('Таймаут')) {
-      errorMessage += 'Превышено время ожидания. Попробуйте обновить страницу.';
-    } else {
-      errorMessage += (e.message || 'Неизвестная ошибка') + '. Попробуйте обновить страницу.';
-    }
-    
-    alert(errorMessage);
-    
-    // Восстанавливаем UI при ошибке
-    startBtn.disabled = false;
-    startBtn.style.opacity = '1';
-    startScreen.style.display = 'flex';
-    status.style.display = 'none';
-  }
-}
-
-// Старт AR и музыки по кнопке
-startBtn.addEventListener('click', startAR);
-
-// Улучшенная обработка касаний для мобильных устройств
-let touchHandled = false;
-startBtn.addEventListener('touchstart', (e) => {
-  if (!touchHandled) {
-    touchHandled = true;
-    e.preventDefault();
-    startBtn.click();
-    setTimeout(() => { touchHandled = false; }, 300);
-  }
-}, { passive: false });
-
-// Дополнительная обработка для всех типов событий
-startBtn.addEventListener('mousedown', (e) => {
-  e.preventDefault();
+      });
+    });
+  }, 5000);
 });
-
-// Убеждаемся, что кнопка кликабельна
-startBtn.style.pointerEvents = 'auto';
-startBtn.style.userSelect = 'none';
-startBtn.style.webkitUserSelect = 'none';
 </script>
+
 </body>
 </html>
