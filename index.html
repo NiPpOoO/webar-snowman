@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 2Статичные модели</title>
+<title>WebAR — Статичные модели</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -45,8 +45,14 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 
   <a-camera look-controls="enabled:false" position="0 0 0"></a-camera>
 
-  <!-- Видеосфера с камерой (фон) -->
-  <a-videosphere id="videoSphere" rotation="0 -90 0" visible="false" material="shader: flat; side: back;"></a-videosphere>
+  <!-- Видеоплоскость с камерой (фон) -->
+  <a-plane id="videoPlane" 
+           position="0 0 -1.5" 
+           width="2" 
+           height="2" 
+           rotation="0 180 0"
+           visible="false"
+           material="shader: flat; side: double;"></a-plane>
 
   <!-- Музыка -->
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
@@ -79,8 +85,9 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const modelsContainer = document.getElementById('modelsContainer');
 const music = document.getElementById('music');
-const videoSphere = document.getElementById('videoSphere');
+const videoPlane = document.getElementById('videoPlane');
 let videoStream = null;
+let videoElement = null;
 
 async function startCamera() {
   try {
@@ -88,8 +95,8 @@ async function startCamera() {
     const stream = await navigator.mediaDevices.getUserMedia({ 
       video: { 
         facingMode: 'environment', // Задняя камера на мобильных
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       } 
     });
     
@@ -103,31 +110,51 @@ async function startCamera() {
     video.muted = true;
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
-    video.style.display = 'none'; // Скрываем, но оставляем в DOM
+    video.style.display = 'none';
     video.style.position = 'absolute';
     video.style.width = '1px';
     video.style.height = '1px';
-    document.body.appendChild(video); // Добавляем в DOM для совместимости
+    document.body.appendChild(video);
+    videoElement = video;
     
-    // Ждем пока видео начнет воспроизводиться
+    // Ждем пока видео начнет воспроизводиться и получим его размеры
     await new Promise((resolve) => {
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.then(() => {
+      video.onloadedmetadata = () => {
+        video.play().then(() => {
           resolve();
         }).catch(() => {
-          // Если autoplay заблокирован, пробуем еще раз
           video.muted = true;
           video.play().then(resolve).catch(() => resolve());
         });
-      } else {
-        video.onloadedmetadata = () => resolve();
-      }
+      };
     });
     
-    // Применяем видео к видеосфере через Three.js
+    // Получаем реальные размеры видео
+    const videoWidth = video.videoWidth || 1920;
+    const videoHeight = video.videoHeight || 1080;
+    const aspectRatio = videoWidth / videoHeight;
+    
+    // Вычисляем размеры плоскости с учетом aspect ratio
+    // Используем FOV камеры для правильного масштабирования
+    const camera = document.querySelector('a-camera').getObject3D('camera');
+    const fov = camera ? camera.fov : 80;
+    const distance = 1.5; // Расстояние от камеры
+    const heightAtDistance = 2 * Math.tan((fov * Math.PI / 180) / 2) * distance;
+    const widthAtDistance = heightAtDistance * aspectRatio;
+    
+    // Устанавливаем правильные размеры плоскости
+    // Ограничиваем максимальный размер для предотвращения увеличения
+    const maxWidth = 3;
+    const maxHeight = 3;
+    const finalWidth = Math.min(widthAtDistance, maxWidth);
+    const finalHeight = Math.min(heightAtDistance, maxHeight);
+    
+    videoPlane.setAttribute('width', finalWidth);
+    videoPlane.setAttribute('height', finalHeight);
+    
+    // Применяем видео к плоскости через Three.js
     const applyVideoTexture = () => {
-      const mesh = videoSphere.getObject3D('mesh');
+      const mesh = videoPlane.getObject3D('mesh');
       if (mesh && mesh.material) {
         const THREE = AFRAME.THREE;
         const videoTexture = new THREE.VideoTexture(video);
@@ -135,23 +162,34 @@ async function startCamera() {
         videoTexture.minFilter = THREE.LinearFilter;
         videoTexture.magFilter = THREE.LinearFilter;
         
+        // Обновляем текстуру каждый кадр
+        videoTexture.needsUpdate = true;
+        
         mesh.material.map = videoTexture;
         mesh.material.needsUpdate = true;
+        
+        // Обновляем текстуру в каждом кадре
+        const updateTexture = () => {
+          if (videoTexture && video.readyState >= 2) {
+            videoTexture.needsUpdate = true;
+          }
+          requestAnimationFrame(updateTexture);
+        };
+        updateTexture();
       } else {
-        // Если меш еще не готов, пробуем через некоторое время
         setTimeout(applyVideoTexture, 100);
       }
     };
     
     // Пробуем применить сразу или после загрузки
-    if (videoSphere.hasLoaded) {
+    if (videoPlane.hasLoaded) {
       applyVideoTexture();
     } else {
-      videoSphere.addEventListener('loaded', applyVideoTexture);
+      videoPlane.addEventListener('loaded', applyVideoTexture);
     }
     
-    // Показываем видеосферу
-    videoSphere.setAttribute('visible', true);
+    // Показываем видеоплоскость
+    videoPlane.setAttribute('visible', true);
     
     return true;
   } catch(error) {
@@ -191,6 +229,9 @@ startBtn.addEventListener('click', async () => {
 window.addEventListener('beforeunload', () => {
   if (videoStream) {
     videoStream.getTracks().forEach(track => track.stop());
+  }
+  if (videoElement && videoElement.parentNode) {
+    videoElement.parentNode.removeChild(videoElement);
   }
 });
 </script>
