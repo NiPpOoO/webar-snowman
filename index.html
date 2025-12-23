@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Статичные модели</title>
+<title>WebAR — 2Статичные модели</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -45,6 +45,9 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 
   <a-camera look-controls="enabled:false" position="0 0 0"></a-camera>
 
+  <!-- Видеосфера с камерой (фон) -->
+  <a-videosphere id="videoSphere" rotation="0 -90 0" visible="false" material="shader: flat; side: back;"></a-videosphere>
+
   <!-- Музыка -->
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
 
@@ -76,9 +79,101 @@ const startBtn = document.getElementById('startBtn');
 const startScreen = document.getElementById('start');
 const modelsContainer = document.getElementById('modelsContainer');
 const music = document.getElementById('music');
+const videoSphere = document.getElementById('videoSphere');
+let videoStream = null;
 
-startBtn.addEventListener('click', () => {
+async function startCamera() {
+  try {
+    // Запрашиваем доступ к камере
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        facingMode: 'environment', // Задняя камера на мобильных
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      } 
+    });
+    
+    videoStream = stream;
+    
+    // Создаем video элемент
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.style.display = 'none'; // Скрываем, но оставляем в DOM
+    video.style.position = 'absolute';
+    video.style.width = '1px';
+    video.style.height = '1px';
+    document.body.appendChild(video); // Добавляем в DOM для совместимости
+    
+    // Ждем пока видео начнет воспроизводиться
+    await new Promise((resolve) => {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          resolve();
+        }).catch(() => {
+          // Если autoplay заблокирован, пробуем еще раз
+          video.muted = true;
+          video.play().then(resolve).catch(() => resolve());
+        });
+      } else {
+        video.onloadedmetadata = () => resolve();
+      }
+    });
+    
+    // Применяем видео к видеосфере через Three.js
+    const applyVideoTexture = () => {
+      const mesh = videoSphere.getObject3D('mesh');
+      if (mesh && mesh.material) {
+        const THREE = AFRAME.THREE;
+        const videoTexture = new THREE.VideoTexture(video);
+        videoTexture.format = THREE.RGBAFormat;
+        videoTexture.minFilter = THREE.LinearFilter;
+        videoTexture.magFilter = THREE.LinearFilter;
+        
+        mesh.material.map = videoTexture;
+        mesh.material.needsUpdate = true;
+      } else {
+        // Если меш еще не готов, пробуем через некоторое время
+        setTimeout(applyVideoTexture, 100);
+      }
+    };
+    
+    // Пробуем применить сразу или после загрузки
+    if (videoSphere.hasLoaded) {
+      applyVideoTexture();
+    } else {
+      videoSphere.addEventListener('loaded', applyVideoTexture);
+    }
+    
+    // Показываем видеосферу
+    videoSphere.setAttribute('visible', true);
+    
+    return true;
+  } catch(error) {
+    console.error('Ошибка доступа к камере:', error);
+    alert('Не удалось получить доступ к камере. Разрешите доступ к камере в настройках браузера.');
+    return false;
+  }
+}
+
+startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
+  startBtn.textContent = 'Загрузка...';
+  
+  // Запускаем камеру
+  const cameraStarted = await startCamera();
+  
+  if (!cameraStarted) {
+    startBtn.disabled = false;
+    startBtn.textContent = 'Запустить';
+    return;
+  }
+  
   startScreen.style.display = 'none';
 
   // Запускаем музыку
@@ -90,6 +185,13 @@ startBtn.addEventListener('click', () => {
   setTimeout(() => {
     modelsContainer.setAttribute('visible', true);
   }, 5000);
+});
+
+// Очистка при закрытии страницы
+window.addEventListener('beforeunload', () => {
+  if (videoStream) {
+    videoStream.getTracks().forEach(track => track.stop());
+  }
 });
 </script>
 
