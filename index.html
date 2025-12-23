@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — Статичные модели</title>
+<title>WebAR — 1Статичные модели</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
@@ -51,7 +51,6 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
            width="2" 
            height="2" 
            rotation="0 0 0"
-           scale="-1 1 1"
            visible="false"
            material="shader: flat; side: double;"></a-plane>
 
@@ -59,7 +58,7 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
   <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
 
   <!-- Контейнер для статичных моделей -->
-  <a-entity id="modelsContainer" position="0 0 -2.5" visible="false">
+  <a-entity id="modelsContainer" position="0 0 -3" visible="true">
 
     <!-- Модель слева -->
     <a-entity
@@ -163,6 +162,10 @@ async function startCamera() {
         videoTexture.minFilter = THREE.LinearFilter;
         videoTexture.magFilter = THREE.LinearFilter;
         
+        // Зеркалим текстуру по горизонтали через offset и repeat
+        videoTexture.offset.set(1, 0);
+        videoTexture.repeat.set(-1, 1);
+        
         // Обновляем текстуру каждый кадр
         videoTexture.needsUpdate = true;
         
@@ -223,8 +226,19 @@ startBtn.addEventListener('click', async () => {
   // Появление моделей через 5 секунд
   setTimeout(() => {
     console.log('Показываем модели');
-    if (modelsContainer) {
-      modelsContainer.setAttribute('visible', true);
+    const container = document.getElementById('modelsContainer');
+    if (container) {
+      // Убеждаемся, что контейнер видим
+      container.setAttribute('visible', true);
+      
+      // Также проверяем дочерние элементы
+      const models = container.querySelectorAll('[gltf-model]');
+      console.log(`Найдено моделей: ${models.length}`);
+      models.forEach((model, index) => {
+        model.setAttribute('visible', true);
+        console.log(`Модель ${index + 1} должна быть видна`);
+      });
+      
       console.log('Модели должны быть видны');
     } else {
       console.error('modelsContainer не найден');
