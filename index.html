@@ -2,15 +2,12 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>WebAR — 1Статичные модели с анимацией</title>
+<title>WebAR — Статичные модели</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
 <!-- A-Frame -->
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
-
-<!-- AR.js -->
-<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+<script src="https://unpkg.com/aframe@1.4.2/dist/aframe-master.min.js"></script>
+<script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
 <style>
 html, body { margin:0; width:100%; height:100%; overflow:hidden; }
@@ -22,41 +19,52 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; }
 #start button {
   padding:16px 26px; font-size:16px;
   border-radius:10px; border:none;
+  cursor:pointer;
+  background:#fff;
+  color:#000;
+}
+#start button:active {
+  opacity:0.8;
+}
+#start button:disabled {
+  opacity:0.6;
+  cursor:not-allowed;
 }
 </style>
 </head>
 <body>
 
 <div id="start">
-  <button id="startBtn">Запустить AR</button>
+  <button id="startBtn">Запустить</button>
 </div>
 
-<a-scene embedded
-         vr-mode-ui="enabled:false"
-         renderer="alpha:true"
-         arjs="sourceType: webcam; debugUIEnabled: false;">
+<a-scene
+  vr-mode-ui="enabled:false"
+  device-orientation-permission-ui="enabled:false"
+  renderer="alpha:true; antialias:true;">
 
-  <!-- Камера -->
-  <a-entity camera look-controls="enabled:false"></a-entity>
+  <a-camera look-controls="enabled:false" position="0 0 0"></a-camera>
 
   <!-- Музыка -->
-  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay:false; loop:true; volume:0.5"></a-entity>
+  <a-entity id="music" sound="src: url(https://nippooo.github.io/webar-snowman/assets/sounds/music.mp3); autoplay: false; loop: true; volume: 0.5"></a-entity>
 
   <!-- Контейнер для статичных моделей -->
   <a-entity id="modelsContainer" position="0 0 -2" visible="false">
 
-    <a-entity id="leftModel"
+    <!-- Модель слева -->
+    <a-entity
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox.glb"
-      position="-0.5 -0.5 0"
+      position="-0.3 0 0"
       scale="0.05 0.05 0.05"
-      animation-mixer>
+      animation-mixer="clip:*; loop:repeat">
     </a-entity>
 
-    <a-entity id="rightModel"
+    <!-- Модель справа -->
+    <a-entity
       gltf-model="https://nippooo.github.io/webar-snowman/assets/models/Fox1.glb"
-      position="0.5 -0.5 0"
+      position="0.3 0 0"
       scale="0.05 0.05 0.05"
-      animation-mixer>
+      animation-mixer="clip:*; loop:repeat">
     </a-entity>
 
   </a-entity>
@@ -74,21 +82,13 @@ startBtn.addEventListener('click', () => {
   startScreen.style.display = 'none';
 
   // Запускаем музыку
-  music.components.sound.playSound();
+  if (music && music.components && music.components.sound) {
+    music.components.sound.playSound();
+  }
 
   // Появление моделей через 5 секунд
   setTimeout(() => {
     modelsContainer.setAttribute('visible', true);
-
-    // Запускаем анимацию моделей
-    const models = modelsContainer.querySelectorAll('[gltf-model]');
-    models.forEach(model => {
-      model.addEventListener('model-loaded', () => {
-        if(model.components['animation-mixer']){
-          model.components['animation-mixer'].play();
-        }
-      });
-    });
   }, 5000);
 });
 </script>
